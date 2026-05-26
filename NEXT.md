@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-クラウド本番稼働中 (2026-05-26)。https://akiyaserch.vercel.app/ で Basic 認証付きダッシュボード公開、Turso に 10件保存済み、GitHub Actions scrape は手動 trigger で稼働確認済み (30分間隔で自動)。残るは Discord Webhook URL を GitHub Secret に登録するのみ (それまで notify は exit early)。
+クラウド本番稼働中 + 家いちば (2本目ソース) 追加完了 (2026-05-26)。Turso に 210件 (zero.estate 10, ieichiba 200)、Discord に関西圏 24件の初回 notify 完了済み。次セッションは追加ソース or 通知強化 (B: 画像/地図/ハザード) のどちらか。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット (2026-05-26 完了)
@@ -16,10 +16,11 @@
 - [ ] `.venv/bin/trade launchd install` で 15分scrape + 毎時notify を仕掛ける
 
 ## Next (Remote-safe)
-- [ ] `src/scrapers/akiya_bank.py`: 全国版空き家・空き地バンク (LIFULL運営) スクレイパ
-  - サイト構造: 都道府県別ページ → ID 抽出 → 詳細
-  - 価格上限フィルタが活きてくる (¥0〜¥300万)
-- [ ] `src/scrapers/iechiba.py`: 家いちば（激安寄り、任意）
+- [x] `src/scrapers/ieichiba.py`: 家いちば JSON API 経由 (2026-05-26 完了、200件取得実績)
+- [ ] `src/scrapers/akiya_bank.py`: 全国版空き家・空き地バンク (LIFULL or アットホーム) スクレイパ
+  - LIFULL は CloudFront bot block あり (実 User-Agent で回避可、ただし利用規約再確認)
+  - アットホーム akiya-athome.jp は 403 (要調査)
+- [ ] **次フェーズ候補 B (通知強化)**: Discord Embed に物件画像メイン表示 + Google Maps リンク + ストリートビュー + ハザードマップリンク
 - [ ] `src/filter.py`: Distance Matrix API 呼び出し本体を実装し、`drive_cache` テーブルに保存
 - [ ] DEPLOY.md の `turso db create --location nrt` を `aws-ap-northeast-1` に修正
 - [ ] DEPLOY.md の Turso URL 例を `libsql://` から `https://` に書き換え (現状の libsql-client は ws ハンドシェイクが 400 を返すため)
@@ -55,3 +56,5 @@
 - 2026-05-26: libsql-client (Python 0.3.1) は libsql:// (WebSocket) URL で 400 エラー。Turso の Hrana HTTP API (https://) を使うことで解決。GitHub Secret と Vercel env var どちらも https:// 形式で登録。
 - 2026-05-26: vercel.json の legacy `builds` + `rewrites` 構文で routing が破綻 (404)。新構文 (`rewrites` のみ、`api/*.py` 自動検出) に切替えてデプロイ成功。
 - 2026-05-26: 認証情報 admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f は会話チャット内に平文残存。ユーザー側でパスワードマネージャに保存済みなら revoke/再生成は任意。
+- 2026-05-26: 家いちばスクレイパは公式 JSON API `/api/properties?orderby=price_asc&page=N` を採用。HTML パースより速い・正確・サイト負荷小。1リクエスト10件、500件総数、20ページ MAX_PAGES + SCRAPE_PRICE_CEILING (500万) で早期 break。
+- 2026-05-26: 家いちば初回スクレイプで関西圏 24件が price ≤ 300万でヒット → Discord に digest 2分割で送信成功。神戸90万円農地、京都伊根町80万円、兵庫赤穂35万円山林、大阪大東270万円戸建てなど良物件多数。
