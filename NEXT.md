@@ -1,17 +1,15 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-クラウドデプロイ準備完了 (2026-05-26)。Vercel + Turso + GitHub Actions の完全無料構成 (案A) で動かせる状態。コード側はすべて完了、ユーザー側で Turso/Vercel/Secrets のセットアップ作業をすれば本番稼働。手順書: [DEPLOY.md](DEPLOY.md)
+クラウド本番稼働中 (2026-05-26)。https://akiyaserch.vercel.app/ で Basic 認証付きダッシュボード公開、Turso に 10件保存済み、GitHub Actions scrape は手動 trigger で稼働確認済み (30分間隔で自動)。残るは Discord Webhook URL を GitHub Secret に登録するのみ (それまで notify は exit early)。
 
-## Next (Mac) — クラウド運用のセットアップ作業
-詳細は [DEPLOY.md](DEPLOY.md)。サマリ:
-- [ ] **Turso** アカウント作成 + CLI install (`brew install tursodatabase/tap/turso`) + DB 作成 + URL/Token 取得
-- [ ] **GitHub Secrets** 登録: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `DISCORD_WEBHOOK_URL`
-- [ ] **Vercel** アカウント作成 + akiyaserch リポを Import + 環境変数 4個 (`TURSO_*`, `DASHBOARD_USERNAME`, `DASHBOARD_PASSWORD`) を設定 + Deploy
-- [ ] GitHub `Actions` タブで `scrape` を手動 Run → Turso にデータ入る確認
-- [ ] スマホで Vercel URL → Basic 認証 → ホーム画面に追加
+## Next (Mac)
+- [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット (2026-05-26 完了)
+- [ ] スマホで https://akiyaserch.vercel.app/ → Basic 認証 (admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f) → 「ホーム画面に追加」
 - [ ] 1日回して通知量を観察、必要なら `config/filters.yaml` の府県allowlist / NGワードを調整
+- [ ] (推奨) Discord Webhook URL を再生成し古いものを revoke (会話履歴に平文で残っているため)
 - [ ] (任意) Google Maps Distance Matrix API キー取得 → GitHub secret `GOOGLE_MAPS_API_KEY` に登録
+- [ ] (任意) Vercel access token (vcp_...) を https://vercel.com/account/tokens で revoke (セットアップ完了したので不要)
 
 ## Next (Mac) — ローカル運用したい場合のみ
 - [ ] `cp config/.env.example .env` → `DISCORD_WEBHOOK_URL` だけ設定
@@ -23,15 +21,19 @@
   - 価格上限フィルタが活きてくる (¥0〜¥300万)
 - [ ] `src/scrapers/iechiba.py`: 家いちば（激安寄り、任意）
 - [ ] `src/filter.py`: Distance Matrix API 呼び出し本体を実装し、`drive_cache` テーブルに保存
+- [ ] DEPLOY.md の `turso db create --location nrt` を `aws-ap-northeast-1` に修正
+- [ ] DEPLOY.md の Turso URL 例を `libsql://` から `https://` に書き換え (現状の libsql-client は ws ハンドシェイクが 400 を返すため)
+- [ ] db.py: `using_libsql()` の判定を `https://*.turso.io` も認識するよう拡張 (現状 URL prefix の確認なしで動いてはいるが明示的に)
 - [ ] ダッシュボードに「お気に入りのみメモ追加」モーダル追加（要 `python-multipart`）
 - [ ] ダッシュボードに「ソース別フィルタ」追加
+- [ ] GitHub Actions の `actions/checkout@v4`, `actions/setup-python@v5` は Node.js 20 deprecation 警告中。2026-09 までに v5/v6 系へ更新
 - [ ] スクレイパが取得した raw HTML を debug のため `data/raw/<source>/<listing_id>.html` に保存するオプション（任意）
 - [ ] 通知本文に「物件詳細ページの最初の画像」をプレビュー表示するよう Embed 改善
 - [ ] `trade db vacuum` コマンド追加
 
 ## Blocked / Questions
-- 「現在の `data/properties.db` を user 環境でそのまま使うか、それとも launchd 設定後にクリアして再scrapeするか」→ どちらでも可。継続でOK。
 - 全国版空き家・空き地バンクの利用規約と robots.txt 確認 (着手前)
+- 関東/東北/北海道/九州の0円物件は10件取得済みだが allowlist (大阪圏) 対象外。次の RSS 更新で関西物件が出るまで Discord 通知は0件のまま (正常動作)。
 
 ## Recent decisions
 - 2026-05-26: フィルタは「大阪駅から車で2時間以内」OR「指定都道府県内」のOR条件。府県allowlistで粗くフィルタ後、境界ケースのみ Google Maps Distance Matrix API で確認（コスト最小化）。
@@ -49,3 +51,7 @@
 - 2026-05-26: GitHub Actions scrape は 30分間隔 (private repo 2000分/月の枠を考慮)。notify は毎時。月間 ~1080分使用見込み。public repo にすれば無制限。
 - 2026-05-26: スマホ対応として viewport meta + 480px 以下のレスポンシブCSSを追加。PWA 風にホーム画面追加可。
 - 2026-05-26: GitHub Actions の scrape/notify ワークフローに secrets early-exit ガード追加。secrets 未設定時は install 前に即 fail して時間を浪費しない。
+- 2026-05-26: 本番デプロイ完了。Turso DB (aws-ap-northeast-1) 作成、Vercel akiyaserch project に env vars 4個 + SSO protection 無効化、https://akiyaserch.vercel.app/ で Basic 認証付きダッシュボード公開。
+- 2026-05-26: libsql-client (Python 0.3.1) は libsql:// (WebSocket) URL で 400 エラー。Turso の Hrana HTTP API (https://) を使うことで解決。GitHub Secret と Vercel env var どちらも https:// 形式で登録。
+- 2026-05-26: vercel.json の legacy `builds` + `rewrites` 構文で routing が破綻 (404)。新構文 (`rewrites` のみ、`api/*.py` 自動検出) に切替えてデプロイ成功。
+- 2026-05-26: 認証情報 admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f は会話チャット内に平文残存。ユーザー側でパスワードマネージャに保存済みなら revoke/再生成は任意。
