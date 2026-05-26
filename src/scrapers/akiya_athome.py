@@ -15,13 +15,19 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Iterator
 from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup, Tag
 
-from .base import RawListing, polite_get
+from .base import (
+    DEFAULT_TIMEOUT,
+    INTER_REQUEST_SECONDS,
+    RawListing,
+    USER_AGENT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +35,40 @@ LISTING_ID_RE = re.compile(r"-(\d+)$")
 
 
 MAX_PAGES = 20  # 1ページ20件想定で最大 ~400件まで対応 (大半の自治体はこれ未満)
+
+
+def _make_relaxed_client() -> httpx.Client:
+    """akiya-athome.jp 専用クライアント.
+
+    akiya-athome.jp は中間証明書 (Cybertrust Japan SureServer CA G4) を
+    送ってこないため、Ubuntu 等のシステム CA ストアにこの中間 CA が無い
+    環境では SSL 検証が失敗する (curl は AIA で自動取得するが Python ssl
+    はしない)。truststore でも GitHub Actions Ubuntu では同様に失敗。
+
+    自治体公式の空き家バンクサイトであり MITM リスクは極小、応答は HTML
+    の物件情報のみで credentials も送信しないため、ここでは verify=False
+    として接続を成立させる。本変更の影響範囲は akiya-athome.jp 配下のみ。
+    """
+    return httpx.Client(
+        headers={"User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.8"},
+        timeout=DEFAULT_TIMEOUT,
+        follow_redirects=True,
+        verify=False,
+    )
+
+
+def _polite_get_relaxed(client: httpx.Client, url: str) -> httpx.Response:
+    for attempt in range(3):
+        resp = client.get(url)
+        if resp.status_code == 429:
+            wait = 2 ** (attempt + 2)
+            logger.warning("429 from %s, backing off %ds", url, wait)
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        time.sleep(INTER_REQUEST_SECONDS)
+        return resp
+    raise RuntimeError(f"giving up on {url} after 429s")
 
 
 class AkiyaAthomeBaseScraper:
@@ -48,12 +88,21 @@ class AkiyaAthomeBaseScraper:
         return f"{self.base_url}/buy/house/area/{self.area_path}/list"
 
     def fetch(self, client: httpx.Client) -> Iterator[RawListing]:
+        # 共有 client は使わず、akiya-athome 向け verify=False client を都度作る。
+        # (httpx の SSL コンテキストは client 作成時に確定するため、共有不可)
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        with _make_relaxed_client() as own_client:
+            yield from self._fetch_with(own_client)
+
+    def _fetch_with(self, client: httpx.Client) -> Iterator[RawListing]:
         seen_ids: set[str] = set()
         total = 0
         for page in range(1, MAX_PAGES + 1):
             url = self.list_url if page == 1 else f"{self.list_url}?page={page}"
             try:
-                resp = polite_get(client, url)
+                resp = _polite_get_relaxed(client, url)
             except httpx.HTTPError as e:
                 logger.warning("%s page=%d fetch failed: %s", self.source, page, e)
                 break
