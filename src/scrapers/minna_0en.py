@@ -110,6 +110,10 @@ def _parse_detail(
     area_land_text = fields.get("土地面積")
     area_building_text = _find_field(fields, ["建物面積", "延床面積", "床面積"])
 
+    # 物件分類フィールドからタイプを判定 (本文ベース分類より信頼できる)
+    bunrui = (fields.get("物件分類") or "").strip()
+    property_type_hint = _map_bunrui_to_type(bunrui)
+
     # サムネ: 最初の wp-content/uploads 配下の画像
     thumb = None
     for img in soup.find_all("img"):
@@ -118,7 +122,15 @@ def _parse_detail(
             thumb = src
             break
 
-    body_text = soup.get_text(" ", strip=True)[:3000]
+    # body は 物件概要テーブルのフィールドを連結したものを使う。
+    # soup.get_text 全体だとサイドバーやナビゲーション、他物件カードが混入し、
+    # キーワード分類や NG 判定で false positive を引き起こす (例: 他物件の
+    # "リゾートマンション" が拾われて apartment 判定される)。
+    body_parts: list[str] = [title]
+    for k, v in fields.items():
+        if v and v.strip() not in ("---", "／---", ""):
+            body_parts.append(f"{k}: {v}")
+    body_text = " | ".join(body_parts)[:2500]
 
     return RawListing(
         source="minna_0en",
@@ -132,7 +144,24 @@ def _parse_detail(
         thumbnail_url=thumb,
         body=body_text or fallback_body,
         posted_at=posted_at,
+        property_type_hint=property_type_hint,
     )
+
+
+def _map_bunrui_to_type(bunrui: str) -> str | None:
+    """zero.estate の '物件分類' を property_type に変換。空文字なら None。"""
+    if not bunrui:
+        return None
+    # よくある値: 土地 / 土地・建物 / 中古住宅 / 中古一戸建 / マンション / etc.
+    if "マンション" in bunrui or "アパート" in bunrui:
+        return "apartment"
+    if "店舗" in bunrui or "事業" in bunrui or "ビル" in bunrui:
+        return "commercial"
+    if "建物" in bunrui or "住宅" in bunrui or "一戸" in bunrui or "戸建" in bunrui or "古民家" in bunrui:
+        return "house"
+    if bunrui == "土地" or "更地" in bunrui or "山林" in bunrui or "農地" in bunrui:
+        return "land"
+    return None
 
 
 def _find_field(fields: dict[str, str], candidates: list[str]) -> str | None:

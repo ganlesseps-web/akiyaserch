@@ -44,6 +44,9 @@ def normalize(raw: RawListing) -> Listing:
 
     prefecture = _extract_prefecture(first_addr)
     city = _extract_city(first_addr, prefecture)
+    # スクレイパが構造化データから判定したヒントがあれば優先 (zero.estate の 物件分類 等)。
+    # 無ければ title+body からキーワード分類にフォールバック。
+    property_type = raw.property_type_hint or classify_property_type(raw.title, raw.body)
 
     return Listing(
         source=raw.source,
@@ -59,7 +62,53 @@ def normalize(raw: RawListing) -> Listing:
         thumbnail_url=raw.thumbnail_url,
         body=raw.body,
         posted_at=raw.posted_at,
+        property_type=property_type,
     )
+
+
+# 物件タイプ判定キーワード
+_HOUSE_DEFINITIVE = (
+    "戸建", "一戸建", "一軒家", "古民家", "邸宅",
+    "家屋", "平屋", "中古住宅", "中古一戸", "中古一戸建", "新築一戸建",
+)
+_HOUSE_BUILDING_HINTS = (
+    "LDK", "DK", "間取り", "築", "階建", "木造", "鉄骨", "RC造", "鉄筋",
+    "二階建", "2階建", "リフォーム済", "リノベ済",
+)
+_APARTMENT = ("マンション", "アパート", "ワンルーム", "コーポ", "メゾネット", "ハイツ")
+_COMMERCIAL = ("オフィスビル", "事業用ビル", "商業ビル", "テナント募集", "店舗のみ")
+_LAND_ONLY = (
+    "山林", "農地", "田畑", "更地", "原野", "林地", "空き地", "空地",
+    "宅地分譲", "分譲地", "別荘地のみ", "土地のみ",
+)
+
+
+def classify_property_type(title: str | None, body: str | None) -> str:
+    """物件タイプ分類. Returns one of:
+       'house'      — 一軒家・戸建て・古民家・農家の家など
+       'apartment'  — マンション・アパート
+       'commercial' — オフィスビル・テナント・店舗専用
+       'land'       — 山林・農地・更地など建物なし
+       'unknown'    — 判定不能 (title/body が薄い場合)
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return "unknown"
+
+    if any(k in text for k in _APARTMENT):
+        return "apartment"
+    if any(k in text for k in _COMMERCIAL):
+        return "commercial"
+    if any(k in text for k in _HOUSE_DEFINITIVE):
+        return "house"
+    # 建物ヒントあり、かつ明らかな land 文言が無い → 家とみなす
+    if any(k in text for k in _HOUSE_BUILDING_HINTS):
+        if not any(k in text for k in _LAND_ONLY):
+            return "house"
+    # 明確な land 系
+    if any(k in text for k in _LAND_ONLY):
+        return "land"
+    return "unknown"
 
 
 def _take_first_address(address: str) -> str:

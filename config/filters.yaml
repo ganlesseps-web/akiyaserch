@@ -40,6 +40,12 @@ ng_keywords:
   - 市街化調整区域内のみ
   # - 再建築不可  # 必要に応じて
 
+# 通す物件タイプ。normalize.classify_property_type で判定された値が
+# このリストに含まれていれば通過。空リスト [] なら全許可。
+# 候補: house / apartment / commercial / land / unknown
+property_types:
+  - house
+
 # 通知頻度（毎時00分のバッチ）
 notify:
   cron: "0 * * * *"  # 毎時00分

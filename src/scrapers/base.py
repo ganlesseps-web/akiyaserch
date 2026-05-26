@@ -29,6 +29,9 @@ class RawListing:
     thumbnail_url: str | None
     body: str | None              # NG ワード判定用テキスト
     posted_at: str | None         # ISO8601
+    property_type_hint: str | None = None
+    """ソース側が判定したタイプ (例: 物件分類="土地" → 'land')。
+    normalize はこのヒントを優先し、None ならキーワード分類にフォールバック。"""
 
 
 class Scraper(Protocol):

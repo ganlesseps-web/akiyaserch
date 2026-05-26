@@ -97,6 +97,24 @@ def score(limit: int) -> None:
     click.echo(f"target={stats['target']} scored={stats['scored']} failed={stats['failed']}")
 
 
+@cli.command()
+def reclassify() -> None:
+    """既存物件の property_type を title+body から再分類 (タイプフィルタ追加時のバックフィル)。"""
+    db.init_db()  # ALTER TABLE が必要なら自動実行
+    with db.connect() as conn:
+        rows = conn.execute("SELECT id, title, body, property_type FROM properties").fetchall()
+        counts: dict[str, int] = {}
+        for r in rows:
+            pt = normalize.classify_property_type(r["title"], r["body"])
+            counts[pt] = counts.get(pt, 0) + 1
+            if pt != r["property_type"]:
+                conn.execute(
+                    "UPDATE properties SET property_type = ? WHERE id = ?",
+                    (pt, r["id"]),
+                )
+    click.echo(f"reclassified {len(rows)} properties: {counts}")
+
+
 @cli.group("launchd")
 def launchd_grp() -> None:
     """launchd への登録/解除。"""

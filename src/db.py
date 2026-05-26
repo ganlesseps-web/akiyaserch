@@ -117,6 +117,7 @@ class Listing:
     thumbnail_url: str | None
     body: str | None
     posted_at: str | None
+    property_type: str | None = None  # house/land/apartment/commercial/unknown
 
 
 def now_iso() -> str:
@@ -253,6 +254,27 @@ def connect(path: Path | None = None) -> Iterator[Any]:
 def init_db(path: Path | None = None) -> None:
     with connect(path) as conn:
         conn.executescript(SCHEMA)
+        _run_migrations(conn)
+
+
+# 新規追加カラムは ALTER TABLE で。idempotent (重複カラムエラーは無視)。
+MIGRATIONS = [
+    "ALTER TABLE properties ADD COLUMN property_type TEXT",
+]
+
+
+def _run_migrations(conn: Any) -> None:
+    import logging
+    log = logging.getLogger(__name__)
+    for sql in MIGRATIONS:
+        try:
+            conn.execute(sql)
+        except Exception as e:
+            err = str(e).lower()
+            # SQLite: "duplicate column name", libsql: 似たメッセージ
+            if "duplicate column" in err or "already exists" in err:
+                continue
+            log.warning("migration skip: %s (%s)", sql, e)
 
 
 # --------- domain operations (work with both backends) ---------
@@ -270,14 +292,14 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             INSERT INTO properties (
                 source, listing_id, url, title, price, prefecture, city, address,
                 area_land, area_building, thumbnail_url, body, posted_at,
-                first_seen_at, last_seen_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                property_type, first_seen_at, last_seen_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 listing.source, listing.listing_id, listing.url, listing.title,
                 listing.price, listing.prefecture, listing.city, listing.address,
                 listing.area_land, listing.area_building, listing.thumbnail_url,
-                listing.body, listing.posted_at, now, now,
+                listing.body, listing.posted_at, listing.property_type, now, now,
             ),
         )
         return cur.lastrowid, True
@@ -286,13 +308,13 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
         UPDATE properties SET
             url = ?, title = ?, price = ?, prefecture = ?, city = ?, address = ?,
             area_land = ?, area_building = ?, thumbnail_url = ?, body = ?,
-            posted_at = ?, last_seen_at = ?
+            posted_at = ?, property_type = ?, last_seen_at = ?
         WHERE id = ?
         """,
         (
             listing.url, listing.title, listing.price, listing.prefecture, listing.city,
             listing.address, listing.area_land, listing.area_building, listing.thumbnail_url,
-            listing.body, listing.posted_at, now, row["id"],
+            listing.body, listing.posted_at, listing.property_type, now, row["id"],
         ),
     )
     return row["id"], False
