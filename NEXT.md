@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-自治体scraper 13本追加完了 (2026-05-27)。指定14自治体すべてカバー: 伊賀(既), 神河21, 多可14, たつの44, 養父39 (独立サイト), 京丹後116, 福知山0, 名張126, 高島12, 五條6, 下市22, 古座川0/有田川0 (わかやまLIFE), 美作13 = +413件。akiya-athome.jp プラットフォーム上の6自治体は汎用 scraper で 1本に統合 (神河/多可/たつの/養父-未使用/福知山/美作)。SSL 中間証明書欠落対策で truststore 導入 (httpx client が OS trust store を使用)。次は Mac で本番運用 (DB は ローカル sqlite に投入済み、Turso 同期は GitHub Actions 待ち)。
+自治体scraper 13本追加 → 本番反映 → Discord 通知まで完走 (2026-05-27)。指定14自治体すべてカバー: 伊賀(既), 神河21, 多可14, たつの44, 養父39 (独立サイト), 京丹後116, 福知山0, 名張126, 高島12, 五條6, 下市22, 古座川0/有田川0 (わかやまLIFE), 美作13。akiya-athome.jp プラットフォーム上の6自治体は汎用 scraper で1本に統合。GitHub Actions 本番実行で raw 640件、notify は `scanned=614 passed=205 sent=205` で Discord に205件をダイジェスト送信。akiya-athome は中間証明書欠落で SSL 検証失敗するため `verify=False` の専用 client を採用 (truststore は GHA Ubuntu では救えなかった)。scrape timeout 5→10分。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -80,3 +80,6 @@
 - 2026-05-27: 養父市は akiya-athome 版 (yabu-c28222) で売戸建 0 件 → 独立サイト yabuakiyabank.jp に切替実装。一覧 (article.flex_box) は title+サムネしか出ないため詳細ページを 1物件ずつ fetch して `<table>` から所在地/築年/構造/宅地面積/延床面積を取得、価格は `<span class="price">200</span><span class="en">万円</span>` から組み立て。39件取得、価格・面積すべて取れることを確認。
 - 2026-05-27: たつの市 (akiya-athome) はクエリ `?page=N` でページネーション動作。MAX_PAGES=20 + 重複検出 (seen_ids) + page_new=0 で早期break の汎用ループを akiya_athome.py に組み込んだ。実測 page1=20件 + page2=20件 + page3=4件 = 44件。
 - 2026-05-27: scraper 全体実行で raw 660件 (うち new 410件) ローカル sqlite に投入成功。filters.yaml の prefectures allowlist は既に必要府県 (京都/兵庫/奈良/和歌山/滋賀/三重/岡山) を含むため変更不要。Turso への反映は GitHub Actions の次回 scrape 時 (cron 30分間隔)。
+- 2026-05-27: GitHub Actions Ubuntu で akiya-athome.jp が CERTIFICATE_VERIFY_FAILED (truststore でも救えない、Cybertrust Japan SureServer CA G4 が Ubuntu の trust store にない)。akiya_athome.py 内に `verify=False` 専用 client + `_polite_get_relaxed()` を設置し、共有 client を無視して自前 client を使う形に変更。自治体公式の空き家サイトで credentials も扱わないため MITM リスク許容。他 scraper への影響なし (truststore のままで動作)。
+- 2026-05-27: scrape workflow の timeout を 5→10 分に拡張。13自治体追加で yabu_indep の詳細 fetch (~50s) など増え 5 分上限で打ち切られた。timeout は保険値で通常実行時間 (5-7分) は変わらないため Actions 枠消費は実質増えない。
+- 2026-05-27: 本番反映完了。手動 trigger した scrape で全 14自治体 (akiya-athome 6本含む) が動作確認、raw 640件 Turso に投入。続けて notify を手動 trigger し `scanned=614 passed=205 sent=205` で Discord に205件分のダイジェスト送信成功 (6 POST、204 No Content)。以降は cron (scrape 30分毎、notify 毎時00分) で自動更新。
