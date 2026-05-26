@@ -24,6 +24,7 @@ def cfg():
         drive_origin="大阪駅",
         drive_max_seconds=7200,
         ng_keywords=["事故物件"],
+        min_ai_score=0,
     )
 
 

@@ -86,6 +86,17 @@ def web(host: str, port: int) -> None:
     uvicorn.run("src.web.app:app", host=host, port=port, reload=False)
 
 
+@cli.command()
+@click.option("--limit", default=100, type=int, help="一度にスコア付与する最大件数")
+def score(limit: int) -> None:
+    """AI で未スコア物件をスコア付け (preferences.yaml を基準に Claude 採点)。"""
+    from . import scorer
+    cfg = scorer.PreferenceConfig.load()
+    with db.connect() as conn:
+        stats = scorer.score_unscored(conn, cfg, limit=limit)
+    click.echo(f"target={stats['target']} scored={stats['scored']} failed={stats['failed']}")
+
+
 @cli.group("launchd")
 def launchd_grp() -> None:
     """launchd への登録/解除。"""

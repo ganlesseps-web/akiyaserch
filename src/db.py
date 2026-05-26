@@ -82,6 +82,17 @@ CREATE TABLE IF NOT EXISTS ratings (
     rated_at      TEXT    NOT NULL
 );
 
+-- AI スコア (preferences.yaml ベースで Claude がつけた 0-10 採点)
+CREATE TABLE IF NOT EXISTS ai_scores (
+    property_id        INTEGER PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+    score              INTEGER NOT NULL,           -- 0-10
+    reason             TEXT,                       -- ~30字の根拠
+    preferences_hash   TEXT    NOT NULL,           -- 好み文字列のハッシュ。変わったら再スコア。
+    model              TEXT    NOT NULL,
+    scored_at          TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_scores_score ON ai_scores (score DESC);
+
 CREATE TABLE IF NOT EXISTS drive_cache (
     address       TEXT    PRIMARY KEY,
     origin        TEXT    NOT NULL,
@@ -196,10 +207,13 @@ class _LibsqlConn:
 
 
 def _split_sql(script: str) -> Iterator[str]:
-    """SCHEMA を ; で分割。文字列リテラル中の ; は今回のスキーマでは使わないので素朴に split。"""
+    """SCHEMA を ; で分割。各文の中の `-- コメント` 行は除去。
+    文字列リテラル中の ; / -- は今回のスキーマでは使わないので素朴に処理。"""
     for stmt in script.split(";"):
-        s = stmt.strip()
-        if s and not s.startswith("--"):
+        # コメント行を除去 (-- ...\n)
+        lines = [ln for ln in stmt.splitlines() if not ln.strip().startswith("--")]
+        s = "\n".join(lines).strip()
+        if s:
             yield s
 
 
@@ -287,9 +301,14 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
 def unnotified_pass(conn: Any, channel: str) -> list[Any]:
     return conn.execute(
         """
-        SELECT p.* FROM properties p
+        SELECT p.*,
+               s.score AS ai_score,
+               s.reason AS ai_reason
+        FROM properties p
         LEFT JOIN notifications n
             ON n.property_id = p.id AND n.channel = ?
+        LEFT JOIN ai_scores s
+            ON s.property_id = p.id
         WHERE n.id IS NULL
           AND p.status = 'active'
         ORDER BY p.first_seen_at ASC

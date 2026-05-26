@@ -54,6 +54,11 @@ SORT_OPTIONS = {
     "price_asc": "(p.price IS NULL) ASC, p.price ASC, p.first_seen_at DESC",
     "price_desc": "(p.price IS NULL) ASC, p.price DESC, p.first_seen_at DESC",
     "area_desc": "(p.area_land IS NULL) ASC, p.area_land DESC, p.first_seen_at DESC",
+    "score_desc": (
+        "(SELECT score FROM ai_scores WHERE property_id = p.id) IS NULL ASC, "
+        "(SELECT score FROM ai_scores WHERE property_id = p.id) DESC, "
+        "p.first_seen_at DESC"
+    ),
 }
 
 
@@ -66,7 +71,9 @@ def _query_rows(
             (SELECT 1 FROM read_status WHERE property_id = p.id) AS is_read,
             (SELECT 1 FROM dismissed WHERE property_id = p.id) AS is_dismissed,
             (SELECT 1 FROM notifications WHERE property_id = p.id) AS was_notified,
-            (SELECT rating FROM ratings WHERE property_id = p.id) AS rating
+            (SELECT rating FROM ratings WHERE property_id = p.id) AS rating,
+            (SELECT score FROM ai_scores WHERE property_id = p.id) AS ai_score,
+            (SELECT reason FROM ai_scores WHERE property_id = p.id) AS ai_reason
         FROM properties p
         WHERE p.status = 'active'
     """
@@ -142,6 +149,7 @@ def index(
                 ("price_asc", "安い順"),
                 ("price_desc", "高い順"),
                 ("area_desc", "広い順"),
+                ("score_desc", "AIスコア高い順"),
             ],
         },
     )

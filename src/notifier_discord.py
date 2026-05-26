@@ -77,6 +77,14 @@ def _hazard_url(address: str | None) -> str:
     return "https://disaportal.gsi.go.jp/"
 
 
+def _safe_get(row: Any, key: str, default: Any = None) -> Any:
+    """sqlite3.Row / _LibsqlRow どちらでも安全に取得 (キー欠如時 default)。"""
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return default
+
+
 def _format_price(price: int | None) -> str:
     if price is None:
         return "価格不明"
@@ -122,6 +130,16 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
         fields.append({"name": "📐 土地", "value": f"{row['area_land']:.0f}㎡", "inline": True})
     if row["area_building"]:
         fields.append({"name": "🏠 建物", "value": f"{row['area_building']:.0f}㎡", "inline": True})
+    # AI スコア (LEFT JOIN ai_scores が無い場合は None)
+    ai_score = _safe_get(row, "ai_score")
+    if ai_score is not None:
+        reason = _safe_get(row, "ai_reason") or ""
+        emoji = "🌟" if ai_score >= 8 else "✨" if ai_score >= 6 else "🤔"
+        fields.append({
+            "name": f"{emoji} AIスコア",
+            "value": f"**{ai_score}/10** {reason}",
+            "inline": False,
+        })
 
     embed = {
         "title": (row["title"] or "(タイトルなし)")[:250],

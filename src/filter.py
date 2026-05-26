@@ -21,11 +21,23 @@ class FilterConfig:
     drive_origin: str
     drive_max_seconds: int
     ng_keywords: list[str]
+    min_ai_score: int  # 0 なら AI スコア無視。>0 なら scored & score >= min_ai_score を要求。
 
     @classmethod
     def load(cls, path: Path | None = None) -> "FilterConfig":
         p = path or DEFAULT_FILTERS_PATH
         data = yaml.safe_load(p.read_text(encoding="utf-8"))
+
+        # preferences.yaml の score_threshold を取り込み (存在する時のみ)
+        min_ai_score = 0
+        pref_path = Path("config/preferences.yaml")
+        if pref_path.exists():
+            try:
+                pref_data = yaml.safe_load(pref_path.read_text(encoding="utf-8")) or {}
+                min_ai_score = int(pref_data.get("score_threshold", 0))
+            except (yaml.YAMLError, ValueError):
+                pass
+
         return cls(
             price_max=int(data.get("price_max", 3_000_000)),
             prefectures=set(data.get("prefectures") or []),
@@ -33,6 +45,7 @@ class FilterConfig:
             drive_origin=data.get("drive_origin", ""),
             drive_max_seconds=int(data.get("drive_max_seconds", 7200)),
             ng_keywords=list(data.get("ng_keywords") or []),
+            min_ai_score=min_ai_score,
         )
 
 
@@ -65,6 +78,16 @@ def passes(
         ok, reason = _check_drive_time(conn, row["address"], cfg)
         if not ok:
             return False, reason
+
+    # AI スコアゲート (preferences.yaml で score_threshold > 0 のとき)
+    if cfg.min_ai_score > 0:
+        score_row = conn.execute(
+            "SELECT score FROM ai_scores WHERE property_id = ?", (row["id"],)
+        ).fetchone()
+        if score_row is None:
+            return False, "ai score pending"
+        if score_row["score"] < cfg.min_ai_score:
+            return False, f"ai score {score_row['score']} < {cfg.min_ai_score}"
 
     return True, "ok"
 

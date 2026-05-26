@@ -34,6 +34,12 @@
   a.title:hover { color: var(--accent); }
   .placeholder { width: 100px; height: 75px; background: var(--dim); border-radius: 4px; }
 
+  .score-badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 0.75rem;
+                 background: #fff8e0; color: #946800; font-weight: 600; }
+  .score-badge[data-score="8"], .score-badge[data-score="9"], .score-badge[data-score="10"] {
+    background: #fff4d1; color: #b46500; }
+  .score-badge[data-score="0"], .score-badge[data-score="1"], .score-badge[data-score="2"], .score-badge[data-score="3"] {
+    background: #f3f3f3; color: #888; }
   .stars { display: inline-flex; gap: 0; margin-top: 0.3rem; }
   .stars button.star { background: none; border: none; padding: 0 2px; cursor: pointer;
                        color: #f5b800; font-size: 1.05rem; min-width: 22px; line-height: 1; }
@@ -96,7 +102,15 @@
       </span>
       ／ {{ r['prefecture'] or '?' }} {{ r['city'] or '' }}
       {% if r['area_land'] %}／ 土地 {{ "%.0f"|format(r['area_land']) }}㎡{% endif %}
-      <br><span style="color:#aaa;">{{ r['source'] }} ／ {{ r['first_seen_at'][:10] }}</span>
+      {% if r['ai_score'] is not none %}
+        ／ <span class="score-badge" data-score="{{r['ai_score']}}">
+          {% if r['ai_score'] >= 8 %}🌟{% elif r['ai_score'] >= 6 %}✨{% else %}🤔{% endif %}
+          AI {{r['ai_score']}}/10
+        </span>
+      {% endif %}
+      <br>
+      <span style="color:#aaa;">{{ r['source'] }} ／ {{ r['first_seen_at'][:10] }}</span>
+      {% if r['ai_reason'] %}<br><span style="color:#888;font-style:italic;">{{ r['ai_reason'] }}</span>{% endif %}
     </div>
     {{ render_stars(r['id'], r['rating'] or 0) | safe }}
   </div>
