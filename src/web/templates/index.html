@@ -62,8 +62,9 @@
 <nav>
   {% for v, label in [
       ("all","すべて"),("unread","未読"),("favorites","★お気に入り"),
-      ("notified","通知済み"),("rated","評価済み"),("dismissed","却下")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts[v]}})</a>
+      ("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
+      ("house","🏠一軒家のみ"),("land","🏞️土地のみ"),("apartment","🏢マンション")] %}
+    <a href="?view={{v}}&sort={{sort}}&q={{q}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 

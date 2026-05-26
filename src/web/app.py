@@ -79,6 +79,11 @@ def _query_rows(
     """
     params: list[Any] = []
 
+    # property_type ビュー (house/land/apartment/all)
+    if view in ("house", "land", "apartment", "commercial"):
+        base += " AND p.property_type = ?"
+        params.append(view)
+
     # view フィルタ — dismissed は dismissed ビュー以外では基本除外
     if view == "unread":
         base += (
@@ -124,6 +129,15 @@ def _counts(conn: Any) -> dict[str, int]:
         ).fetchone()[0],
         "rated": conn.execute("SELECT COUNT(*) FROM ratings").fetchone()[0],
         "dismissed": conn.execute("SELECT COUNT(*) FROM dismissed").fetchone()[0],
+        "house": conn.execute(
+            "SELECT COUNT(*) FROM properties WHERE property_type = 'house' AND status='active'"
+        ).fetchone()[0],
+        "land": conn.execute(
+            "SELECT COUNT(*) FROM properties WHERE property_type = 'land' AND status='active'"
+        ).fetchone()[0],
+        "apartment": conn.execute(
+            "SELECT COUNT(*) FROM properties WHERE property_type = 'apartment' AND status='active'"
+        ).fetchone()[0],
     }
 
 
