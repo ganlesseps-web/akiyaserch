@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import logging
+import ssl
 import time
 from dataclasses import dataclass
 from typing import Iterator, Protocol
 
 import httpx
+import truststore
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,15 @@ class Scraper(Protocol):
 
 
 def make_client() -> httpx.Client:
+    # 一部の自治体サイト (例: akiya-athome.jp) は中間証明書を送ってこないため、
+    # certifi の CA bundle だけでは検証できない。truststore で OS の trust store を
+    # 使うことで、システム標準と同じ検証 (curl 同等) で接続できる。
+    ssl_ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     return httpx.Client(
         headers={"User-Agent": USER_AGENT, "Accept-Language": "ja,en;q=0.8"},
         timeout=DEFAULT_TIMEOUT,
         follow_redirects=True,
+        verify=ssl_ctx,
     )
 
 

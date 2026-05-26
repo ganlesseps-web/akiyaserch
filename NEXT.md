@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-初心者向け調整 + 伊賀市自治体scraper 追加完了 (2026-05-26)。filter: price_min ¥50万 (0円物件除外)、海沿い NG 強化 (淡路島自体OKだが「海の絶景/海沿い/オーシャンビュー」等の海フロント物件は除外)、Discord embed に💰補助金検索リンク追加。Turso 228件 (ieichiba 200, minna_0en 10, iga_akiyabank 18)。関西house filter pass 16+4=20件。AI スコアリングはオフ中。残り 5自治体 (神河/多可/たつの/養父/名張) は別セッションで実装予定。
+自治体scraper 13本追加完了 (2026-05-27)。指定14自治体すべてカバー: 伊賀(既), 神河21, 多可14, たつの44, 養父39 (独立サイト), 京丹後116, 福知山0, 名張126, 高島12, 五條6, 下市22, 古座川0/有田川0 (わかやまLIFE), 美作13 = +413件。akiya-athome.jp プラットフォーム上の6自治体は汎用 scraper で 1本に統合 (神河/多可/たつの/養父-未使用/福知山/美作)。SSL 中間証明書欠落対策で truststore 導入 (httpx client が OS trust store を使用)。次は Mac で本番運用 (DB は ローカル sqlite に投入済み、Turso 同期は GitHub Actions 待ち)。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -21,10 +21,11 @@
 ## Next (Remote-safe)
 - [x] `src/scrapers/ieichiba.py`: 家いちば JSON API 経由 (2026-05-26 完了、200件取得実績)
 - [x] `src/scrapers/iga_akiyabank.py`: 三重県伊賀市公式空き家バンク (2026-05-26 完了、18件取得)
-- [ ] 残り自治体 5サイト (ユーザー指定): 兵庫県神河町・多可町・たつの市・養父市、三重県名張市
-  - 各サイトの空き家バンク URL を発見 → 構造解析 → scraper実装。1サイトあたり ~2時間
-  - 候補 URL (要検証): town.kamikawa.hyogo.jp, town.taka.lg.jp, city.tatsuno.lg.jp, city.yabu.hyogo.jp, city.nabari.lg.jp
+- [x] 自治体scraper 13本追加 (2026-05-27 完了): 神河/多可/たつの/養父独立/京丹後/福知山/名張/高島/五條/下市/わかやまLIFE/美作 + akiya-athome 汎用ベース
 - [ ] (任意) iga_akiyabank で詳細ページから area_land / area_building 取得 (現状は list 1リクのみ)
+- [ ] (任意) 福知山市が物件追加されたとき自動取得可 (現状 0 件で scraper 待機)
+- [ ] (任意) わかやまLIFE のフィルタ URL を再調査 (akiya_area パラメータが効かないため全和歌山県取得→住所で絞り込み中)。古座川/有田川が登録された時に動くが、和歌山県他自治体の物件も増えたら住所filter は重くなる
+- [ ] (任意) たつの市 ページネーション現状 page=1,2 で 44件取れているが、サイト全体で 180件と公称あり (戸建以外も含む全集計の可能性)
 - [ ] (任意) `src/scrapers/akiya_bank.py`: 全国版空き家バンク (LIFULL/アットホーム) — Playwright 必須
 - [ ] `src/filter.py`: Distance Matrix API 呼び出し本体を実装し、`drive_cache` テーブルに保存
 - [ ] DEPLOY.md の `turso db create --location nrt` を `aws-ap-northeast-1` に修正
@@ -73,3 +74,9 @@
 - 2026-05-26: 「オンボロ物件 (大幅修繕しないと住めない家) を除外」要件に対応。normalize.is_dilapidated で確実な指標 (住める状態ではあり/解体前提/廃屋/倒壊 等) と文脈依存指標 (雨漏り/腐食/シロアリ被害 — 否定文脈 "対策済/重大な瑕疵は見受けられません" を確認) で判定。filters.yaml に exclude_dilapidated: true。DB に dilapidated (INT) と dilapidation_reason (TEXT) 列追加。house 140件中 9件 (5.7%) がオンボロ判定: 三重大台町 母屋住めない、千葉野田 雨漏りあり、兵庫宝塚 雨漏り腐食、兵庫姫路 大規模リフォーム必要、和歌山白浜 腐食、ほか4件。
 - 2026-05-26: 「初心者向け費用最小化」相談に対応。filters.yaml に price_min: 500000 追加 (0円物件は本体無料でも修繕費+取得税で結局500-1500万かかるため、リフォーム済 50-300万帯が実用的にお得)。海沿いNG keywords を「海の絶景/海絶景/オーシャンビュー/海一望」等まで強化 (淡路島自体は OK 残し、海フロント物件のみ除外)。Discord embed に💰補助金検索リンク追加 (Google で「<市区町村> 空き家 補助金」検索する shortcut)。
 - 2026-05-26: 自治体scraper 1本目として三重県伊賀市公式 (iga-akiyabank.com) を追加。18件取得、house のみ、賃貸はスキップ、address は 「伊賀市〇〇」→「三重県伊賀市〇〇」 正規化。filter pass 4件: 伊勢路 200万 / 上神戸 250万 / 大内 300万 / 島ヶ原 300万。残り 5自治体 (神河/多可/たつの/養父/名張) はユーザー指定済、次セッションで追加。
+- 2026-05-27: ユーザー指定14自治体すべてカバーするため scraper 13本を一気に追加。並列偵察 (Explore agent 4並列) で各サイト構造を解析し、6自治体が akiya-athome.jp プラットフォームで共通の HTML 構造 (.building-info + .room-list table) を持つことを発見 → AkiyaAthomeBaseScraper を作って (subdomain, area_path, prefecture) 違いをサブクラスの class 変数で表現する設計に。これで実装数を 6本→1本に削減。
+- 2026-05-27: akiya-athome.jp は中間証明書を送ってこないため certifi 単体では SSL 検証失敗。truststore (Python 3.10+) を依存に追加し base.make_client() で `truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` を httpx の verify に渡す形に変更。これで OS の trust store (curl と同じ) を使用、全 scraper が中間証明書欠落サイトに対応可能になった。
+- 2026-05-27: わかやまLIFE (wakayamagurashi.jp) はクエリ `?akiya_area=aridagawacho` がサーバー側で効かず全和歌山県物件が出る (12件サンプル中、有田川/古座川 0件)。scraper 側で住所文字列に「古座川町」or「有田川町」を含むものだけ yield する形に。現状は古座川/有田川とも登録 0 件のため通過する物件無し、将来登録時に自動取得される設計。
+- 2026-05-27: 養父市は akiya-athome 版 (yabu-c28222) で売戸建 0 件 → 独立サイト yabuakiyabank.jp に切替実装。一覧 (article.flex_box) は title+サムネしか出ないため詳細ページを 1物件ずつ fetch して `<table>` から所在地/築年/構造/宅地面積/延床面積を取得、価格は `<span class="price">200</span><span class="en">万円</span>` から組み立て。39件取得、価格・面積すべて取れることを確認。
+- 2026-05-27: たつの市 (akiya-athome) はクエリ `?page=N` でページネーション動作。MAX_PAGES=20 + 重複検出 (seen_ids) + page_new=0 で早期break の汎用ループを akiya_athome.py に組み込んだ。実測 page1=20件 + page2=20件 + page3=4件 = 44件。
+- 2026-05-27: scraper 全体実行で raw 660件 (うち new 410件) ローカル sqlite に投入成功。filters.yaml の prefectures allowlist は既に必要府県 (京都/兵庫/奈良/和歌山/滋賀/三重/岡山) を含むため変更不要。Turso への反映は GitHub Actions の次回 scrape 時 (cron 30分間隔)。

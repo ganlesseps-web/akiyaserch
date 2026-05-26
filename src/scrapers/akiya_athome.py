@@ -1,0 +1,227 @@
+"""akiya-athome.jp プラットフォーム汎用スクレイパ.
+
+複数自治体が同じ akiya-athome.jp の自治体カスタムサブドメインで運営しており、
+HTML 構造が共通 (.building-info + .room-list table)。サブクラスで
+(source, subdomain, area_path, prefecture) のみ override する。
+
+戦略:
+- /buy/house/area/<prefecture>/<city>/list の HTML を 1リクエストで取得
+- .building-info ごとに 1物件 (タイトル/住所/サムネ/築年) を抽出
+- 続く .room-list table の最初の <tr> から (価格/間取り/面積) を抽出
+- listing_id は href の末尾数字、または checkbox value=<id>
+- 売戸建のみ対象 (sbt_kbn=house 固定、賃貸/土地/事業はスキップ)
+"""
+from __future__ import annotations
+
+import logging
+import re
+from typing import Iterator
+from urllib.parse import urljoin
+
+import httpx
+from bs4 import BeautifulSoup, Tag
+
+from .base import RawListing, polite_get
+
+logger = logging.getLogger(__name__)
+
+LISTING_ID_RE = re.compile(r"-(\d+)$")
+
+
+MAX_PAGES = 20  # 1ページ20件想定で最大 ~400件まで対応 (大半の自治体はこれ未満)
+
+
+class AkiyaAthomeBaseScraper:
+    """サブクラスで以下のクラス変数を override すること."""
+
+    source: str = ""
+    subdomain: str = ""   # 例: "kamikawa-t28446"
+    area_path: str = ""   # 例: "hyogoken/kanzakigunkamikawacho"
+    prefecture: str = ""  # 例: "兵庫県" (住所先頭に補完)
+
+    @property
+    def base_url(self) -> str:
+        return f"https://{self.subdomain}.akiya-athome.jp"
+
+    @property
+    def list_url(self) -> str:
+        return f"{self.base_url}/buy/house/area/{self.area_path}/list"
+
+    def fetch(self, client: httpx.Client) -> Iterator[RawListing]:
+        seen_ids: set[str] = set()
+        total = 0
+        for page in range(1, MAX_PAGES + 1):
+            url = self.list_url if page == 1 else f"{self.list_url}?page={page}"
+            try:
+                resp = polite_get(client, url)
+            except httpx.HTTPError as e:
+                logger.warning("%s page=%d fetch failed: %s", self.source, page, e)
+                break
+
+            soup = BeautifulSoup(resp.content, "lxml")
+            items = soup.select("li:has(> .building-info)")
+            if not items:
+                items = [info.parent for info in soup.select(".building-info") if info.parent and info.parent.name == "li"]
+
+            if not items:
+                if page == 1:
+                    logger.info("%s: 0 items at %s (empty bank)", self.source, url)
+                break
+
+            page_new = 0
+            for li in items:
+                listing = self._parse_item(li)
+                if listing is None:
+                    continue
+                if listing.listing_id in seen_ids:
+                    continue
+                seen_ids.add(listing.listing_id)
+                page_new += 1
+                yield listing
+            total += page_new
+            logger.info("%s: page %d -> %d new (total %d)", self.source, page, page_new, total)
+            # ページに新規が無ければ終了 (akiya-athome は範囲外 page を最終ページに redirect する)
+            if page_new == 0:
+                break
+
+    def _parse_item(self, li: Tag) -> RawListing | None:
+        info = li.select_one(".building-info")
+        if info is None:
+            return None
+
+        # listing_id: 詳細リンクの末尾数字
+        link = info.select_one('a[href*="/bukken/detail/buy/"]')
+        if link is None:
+            return None
+        href = str(link.get("href", ""))
+        m = LISTING_ID_RE.search(href)
+        if not m:
+            return None
+        listing_id = m.group(1)
+        detail_url = urljoin(self.base_url, href)
+
+        title = link.get_text(strip=True) or f"({self.source} {listing_id})"
+
+        # 種別 (中古売戸建住宅 / 土地 / 事業用 等)
+        sbt_el = info.select_one(".bk-sbt-icon")
+        sbt = sbt_el.get_text(strip=True) if sbt_el else ""
+        if sbt and "戸建" not in sbt and "住宅" not in sbt and "古民家" not in sbt:
+            # 土地・事業用・マンション等はスキップ
+            return None
+
+        # 住所
+        addr_el = info.select_one('[data-column="address"]')
+        address = addr_el.get_text(" ", strip=True) if addr_el else None
+        if address and self.prefecture and not address.startswith(self.prefecture):
+            address = f"{self.prefecture}{address}" if not address.startswith(("北海道", "東京都", "京都府", "大阪府")) and not address[:3].endswith("県") else address
+
+        # サムネ (data-column="gaikan-image" の img)
+        thumb = None
+        img_el = info.select_one('[data-column="gaikan-image"] img')
+        if img_el:
+            src = str(img_el.get("src", ""))
+            if src.startswith("//"):
+                thumb = "https:" + src
+            elif src.startswith("http"):
+                thumb = src
+            elif src and not src.endswith("noimage.gif"):
+                thumb = urljoin(self.base_url, src)
+
+        # 築年・構造・staff コメント
+        chiku_el = info.select_one('[data-column="chiku_ymd"]')
+        chiku = chiku_el.get_text(" ", strip=True) if chiku_el else ""
+        kozo_el = info.select_one('[data-column="tate_kozo_kbn"]')
+        kozo = kozo_el.get_text(" ", strip=True) if kozo_el else ""
+        msg_el = info.select_one(".staff-message")
+        msg = msg_el.get_text(" ", strip=True) if msg_el else ""
+
+        # .room-list table から価格/間取り/面積
+        price_text: str | None = None
+        layout_text = ""
+        area_text: str | None = None
+
+        table = li.select_one(".room-list")
+        if table:
+            # データ行 (tbody > tr) のうち data-column を持つ最初の tr
+            for tr in table.select("tbody tr"):
+                price_td = tr.select_one('td[data-column="price"]')
+                if price_td:
+                    # spans が "280" "" "万円" の3つ。連結する
+                    price_text = price_td.get_text("", strip=True)
+                    madori_td = tr.select_one('td[data-column="madori"]')
+                    if madori_td:
+                        layout_text = madori_td.get_text(" ", strip=True)
+                    menseki_td = tr.select_one('td[data-column="menseki"]')
+                    if menseki_td:
+                        area_text = menseki_td.get_text(" ", strip=True)
+                    break
+
+        body = " | ".join(filter(None, [layout_text, kozo, chiku, msg]))
+        # 売戸建住宅と明示されている / 間取り情報があれば house 確定
+        type_hint = "house" if (sbt and ("戸建" in sbt or "住宅" in sbt)) or layout_text else None
+
+        return RawListing(
+            source=self.source,
+            listing_id=listing_id,
+            url=detail_url,
+            title=title,
+            price_text=price_text,
+            address_text=address,
+            area_land_text=area_text,
+            area_building_text=None,
+            thumbnail_url=thumb,
+            body=body,
+            posted_at=None,
+            property_type_hint=type_hint,
+        )
+
+
+# ===== 自治体別サブクラス =====
+
+class KamikawaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県神河町 (kamikawa-t28446.akiya-athome.jp)"""
+    source = "kamikawa_akiyabank"
+    subdomain = "kamikawa-t28446"
+    area_path = "hyogoken/kanzakigunkamikawacho"
+    prefecture = "兵庫県"
+
+
+class TakaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県多可町 (taka-t28365.akiya-athome.jp)"""
+    source = "taka_akiyabank"
+    subdomain = "taka-t28365"
+    area_path = "hyogoken/takaguntakacho"
+    prefecture = "兵庫県"
+
+
+class TatsunoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県たつの市 (tatsuno-c28229.akiya-athome.jp)"""
+    source = "tatsuno_akiyabank"
+    subdomain = "tatsuno-c28229"
+    area_path = "hyogoken/tatsunoshi"
+    prefecture = "兵庫県"
+
+
+class YabuAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県養父市 (yabu-c28222.akiya-athome.jp)"""
+    source = "yabu_akiyabank"
+    subdomain = "yabu-c28222"
+    area_path = "hyogoken/yabushi"
+    prefecture = "兵庫県"
+
+
+class FukuchiyamaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """京都府福知山市 (fukuchiyama-c26201.akiya-athome.jp).
+    現在登録 0 件だが将来増える可能性があるので scraper は用意する。"""
+    source = "fukuchiyama_akiyabank"
+    subdomain = "fukuchiyama-c26201"
+    area_path = "kyotofu/fukuchiyamashi"
+    prefecture = "京都府"
+
+
+class MimasakaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県美作市 (mimasaka-c33215.akiya-athome.jp)"""
+    source = "mimasaka_akiyabank"
+    subdomain = "mimasaka-c33215"
+    area_path = "okayamaken/mimasakashi"
+    prefecture = "岡山県"
