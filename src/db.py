@@ -1,19 +1,30 @@
-"""SQLite layer. Single file, WAL mode for safe concurrent read/write."""
+"""DB layer. ローカルは sqlite3、本番は Turso (libsql) を環境変数で切替。
+
+切替ロジック:
+    TURSO_DATABASE_URL が設定されていれば libsql_client を使い、なければ
+    sqlite3 でローカルファイルに接続する。両方とも同じ sqlite3 風 API
+    (execute / executemany / executescript / fetchall / fetchone / lastrowid)
+    で扱えるよう、libsql 側は薄い wrapper でラップする。
+"""
 from __future__ import annotations
 
 import os
 import sqlite3
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator, Sequence
 
 DEFAULT_DB_PATH = Path("data/properties.db")
 
 
 def db_path() -> Path:
     return Path(os.environ.get("TRADE_DB_PATH", str(DEFAULT_DB_PATH)))
+
+
+def using_libsql() -> bool:
+    return bool(os.environ.get("TURSO_DATABASE_URL"))
 
 
 SCHEMA = """
@@ -23,18 +34,18 @@ CREATE TABLE IF NOT EXISTS properties (
     listing_id      TEXT    NOT NULL,
     url             TEXT    NOT NULL,
     title           TEXT    NOT NULL,
-    price           INTEGER,            -- yen, NULL if unknown
+    price           INTEGER,
     prefecture      TEXT,
     city            TEXT,
     address         TEXT,
-    area_land       REAL,               -- m^2
-    area_building   REAL,               -- m^2
+    area_land       REAL,
+    area_building   REAL,
     thumbnail_url   TEXT,
-    body            TEXT,               -- full text snippet for NG word match
-    posted_at       TEXT,               -- ISO8601, source publication time
-    first_seen_at   TEXT    NOT NULL,   -- ISO8601, when we first fetched it
+    body            TEXT,
+    posted_at       TEXT,
+    first_seen_at   TEXT    NOT NULL,
     last_seen_at    TEXT    NOT NULL,
-    status          TEXT    NOT NULL DEFAULT 'active',  -- active / closed / removed
+    status          TEXT    NOT NULL DEFAULT 'active',
     UNIQUE (source, listing_id)
 );
 
@@ -60,11 +71,10 @@ CREATE TABLE IF NOT EXISTS read_status (
     read_at       TEXT    NOT NULL
 );
 
--- Distance Matrix results cache: address -> drive seconds from origin
 CREATE TABLE IF NOT EXISTS drive_cache (
     address       TEXT    PRIMARY KEY,
     origin        TEXT    NOT NULL,
-    drive_seconds INTEGER,            -- NULL if API returned no route
+    drive_seconds INTEGER,
     fetched_at    TEXT    NOT NULL
 );
 """
@@ -84,29 +94,135 @@ class Listing:
     area_building: float | None
     thumbnail_url: str | None
     body: str | None
-    posted_at: str | None  # ISO8601
+    posted_at: str | None
 
 
 def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+# --------- libsql wrapper (sqlite3-compatible thin layer) ---------
+
+class _LibsqlRow:
+    """sqlite3.Row 互換。`row['col']` と `row[0]` と `dict(row)` をサポート。"""
+    __slots__ = ("_cols", "_vals")
+
+    def __init__(self, cols: Sequence[str], vals: Sequence[Any]):
+        self._cols = cols
+        self._vals = vals
+
+    def __getitem__(self, key: int | str) -> Any:
+        if isinstance(key, int):
+            return self._vals[key]
+        return self._vals[self._cols.index(key)]
+
+    def keys(self) -> list[str]:
+        return list(self._cols)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self._vals)
+
+
+class _LibsqlCursor:
+    def __init__(self, rs: Any):
+        self._rs = rs
+        self._cols = list(rs.columns) if rs.columns else []
+        self._rows = list(rs.rows) if rs.rows else []
+        self._idx = 0
+
+    def fetchone(self) -> _LibsqlRow | None:
+        if self._idx >= len(self._rows):
+            return None
+        r = self._rows[self._idx]
+        self._idx += 1
+        return _LibsqlRow(self._cols, list(r))
+
+    def fetchall(self) -> list[_LibsqlRow]:
+        out = [_LibsqlRow(self._cols, list(r)) for r in self._rows[self._idx:]]
+        self._idx = len(self._rows)
+        return out
+
+    @property
+    def lastrowid(self) -> int | None:
+        v = getattr(self._rs, "last_insert_rowid", None)
+        return int(v) if v is not None else None
+
+    def __iter__(self) -> Iterator[_LibsqlRow]:
+        return iter(self.fetchall())
+
+
+class _LibsqlConn:
+    """Connect to libsql/Turso via libsql_client.create_client_sync.
+
+    Exposes the subset of sqlite3.Connection API we actually use.
+    """
+    def __init__(self, url: str, auth_token: str | None):
+        import libsql_client  # local import to avoid hard dep at module load
+        self._client = libsql_client.create_client_sync(url=url, auth_token=auth_token)
+        self.row_factory = None  # ignored; rows are always _LibsqlRow
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> _LibsqlCursor:
+        rs = self._client.execute(sql, list(params) if params else None)
+        return _LibsqlCursor(rs)
+
+    def executemany(self, sql: str, params_list: Sequence[Sequence[Any]]) -> None:
+        for p in params_list:
+            self._client.execute(sql, list(p))
+
+    def executescript(self, script: str) -> None:
+        for stmt in _split_sql(script):
+            self._client.execute(stmt)
+
+    def commit(self) -> None:
+        # libsql_client.execute auto-commits each statement.
+        pass
+
+    def rollback(self) -> None:
+        pass
+
+    def close(self) -> None:
+        self._client.close()
+
+
+def _split_sql(script: str) -> Iterator[str]:
+    """SCHEMA を ; で分割。文字列リテラル中の ; は今回のスキーマでは使わないので素朴に split。"""
+    for stmt in script.split(";"):
+        s = stmt.strip()
+        if s and not s.startswith("--"):
+            yield s
+
+
 @contextmanager
-def connect(path: Path | None = None) -> Iterator[sqlite3.Connection]:
+def connect(path: Path | None = None) -> Iterator[Any]:
+    """sqlite3.Connection または _LibsqlConn を yield する。
+
+    どちらも sqlite3.Row 互換のオブジェクトを返す。
+    """
+    if using_libsql():
+        conn = _LibsqlConn(
+            url=os.environ["TURSO_DATABASE_URL"],
+            auth_token=os.environ.get("TURSO_AUTH_TOKEN"),
+        )
+        try:
+            yield conn
+        finally:
+            conn.close()
+        return
+
     p = path or db_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(p)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA foreign_keys = ON")
+    sqlite_conn = sqlite3.connect(p)
+    sqlite_conn.row_factory = sqlite3.Row
+    sqlite_conn.execute("PRAGMA journal_mode = WAL")
+    sqlite_conn.execute("PRAGMA foreign_keys = ON")
     try:
-        yield conn
-        conn.commit()
+        yield sqlite_conn
+        sqlite_conn.commit()
     except Exception:
-        conn.rollback()
+        sqlite_conn.rollback()
         raise
     finally:
-        conn.close()
+        sqlite_conn.close()
 
 
 def init_db(path: Path | None = None) -> None:
@@ -114,7 +230,9 @@ def init_db(path: Path | None = None) -> None:
         conn.executescript(SCHEMA)
 
 
-def upsert_listing(conn: sqlite3.Connection, listing: Listing) -> tuple[int, bool]:
+# --------- domain operations (work with both backends) ---------
+
+def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
     """Insert or update. Returns (property_id, is_new)."""
     row = conn.execute(
         "SELECT id FROM properties WHERE source = ? AND listing_id = ?",
@@ -155,8 +273,7 @@ def upsert_listing(conn: sqlite3.Connection, listing: Listing) -> tuple[int, boo
     return row["id"], False
 
 
-def unnotified_pass(conn: sqlite3.Connection, channel: str) -> list[sqlite3.Row]:
-    """Properties not yet notified on this channel. Filtering happens in src.filter."""
+def unnotified_pass(conn: Any, channel: str) -> list[Any]:
     return conn.execute(
         """
         SELECT p.* FROM properties p
@@ -170,7 +287,7 @@ def unnotified_pass(conn: sqlite3.Connection, channel: str) -> list[sqlite3.Row]
     ).fetchall()
 
 
-def mark_notified(conn: sqlite3.Connection, property_ids: list[int], channel: str) -> None:
+def mark_notified(conn: Any, property_ids: list[int], channel: str) -> None:
     now = now_iso()
     conn.executemany(
         "INSERT OR IGNORE INTO notifications (property_id, channel, sent_at) VALUES (?, ?, ?)",
@@ -178,10 +295,10 @@ def mark_notified(conn: sqlite3.Connection, property_ids: list[int], channel: st
     )
 
 
-def cached_drive_seconds(
-    conn: sqlite3.Connection, address: str, origin: str
-) -> int | None | object:
-    """Returns drive seconds, None (no route), or a sentinel `MISS` if uncached."""
+MISS = object()
+
+
+def cached_drive_seconds(conn: Any, address: str, origin: str) -> int | None | object:
     row = conn.execute(
         "SELECT drive_seconds FROM drive_cache WHERE address = ? AND origin = ?",
         (address, origin),
@@ -191,9 +308,7 @@ def cached_drive_seconds(
     return row["drive_seconds"]
 
 
-def cache_drive(
-    conn: sqlite3.Connection, address: str, origin: str, drive_seconds: int | None
-) -> None:
+def cache_drive(conn: Any, address: str, origin: str, drive_seconds: int | None) -> None:
     conn.execute(
         """
         INSERT OR REPLACE INTO drive_cache (address, origin, drive_seconds, fetched_at)
@@ -201,6 +316,3 @@ def cache_drive(
         """,
         (address, origin, drive_seconds, now_iso()),
     )
-
-
-MISS = object()  # sentinel returned by cached_drive_seconds when uncached

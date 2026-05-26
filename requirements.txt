@@ -1,0 +1,8 @@
+# Vercel Python runtime はこのファイルを見て依存をインストールする。
+# ダッシュボード (api/index.py → src/web/app.py) が動く最小セット。
+# scraping / notifier 系は GitHub Actions で別途 pyproject.toml から install するので
+# ここには含めない (Vercel function size を抑えるため)。
+fastapi>=0.115
+jinja2>=3.1
+python-dotenv>=1.0
+libsql-client>=0.3
