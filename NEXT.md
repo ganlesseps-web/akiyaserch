@@ -1,15 +1,17 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-クラウド本番稼働中 + 家いちば (2本目ソース) 追加完了 (2026-05-26)。Turso に 210件 (zero.estate 10, ieichiba 200)、Discord に関西圏 24件の初回 notify 完了済み。次セッションは追加ソース or 通知強化 (B: 画像/地図/ハザード) のどちらか。
+ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord Embed 強化 (画像/地図/ハザード)、C: ダッシュボード強化 (ソート5種/検索/却下/★レーティング/スコア badge)、D: Claude Haiku で AI スコアリング (preferences.yaml ベース)。AI スコアリングは ANTHROPIC_API_KEY を GitHub Secret に登録すれば自動起動 (score.yml が 10/40分実行)。それまでは scoring がスキップされ filter は score を要求しない (min_ai_score=0 として動く)。
 
 ## Next (Mac)
-- [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット (2026-05-26 完了)
-- [ ] スマホで https://akiyaserch.vercel.app/ → Basic 認証 (admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f) → 「ホーム画面に追加」
-- [ ] 1日回して通知量を観察、必要なら `config/filters.yaml` の府県allowlist / NGワードを調整
-- [ ] (推奨) Discord Webhook URL を再生成し古いものを revoke (会話履歴に平文で残っているため)
-- [ ] (任意) Google Maps Distance Matrix API キー取得 → GitHub secret `GOOGLE_MAPS_API_KEY` に登録
-- [ ] (任意) Vercel access token (vcp_...) を https://vercel.com/account/tokens で revoke (セットアップ完了したので不要)
+- [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
+- [ ] **AI スコアリング有効化** — Anthropic Console (https://console.anthropic.com/settings/keys) で API キー作成 → `gh secret set ANTHROPIC_API_KEY` で登録 → 10/40分の自動 score ワークフローが起動
+- [ ] **preferences.yaml をカスタマイズ** — `config/preferences.yaml` の description を自分の好みに編集 (現状はデフォルト) → コミット & push → preferences_hash が変わるので全件再スコア
+- [ ] スマホで Web 操作確認 (★レーティング・却下ボタン・検索)
+- [ ] 1日回して通知量を観察、必要なら `config/filters.yaml` の府県allowlist / NGワード調整
+- [ ] (推奨) Discord Webhook URL / Basic auth password を revoke & 再発行 (会話履歴に平文で残っているため)
+- [ ] (任意) Google Maps Distance Matrix API キー → 境界府県の本物のドライブ時間判定
+- [ ] (任意) Vercel access token (vcp_...) を https://vercel.com/account/tokens で revoke (不要)
 
 ## Next (Mac) — ローカル運用したい場合のみ
 - [ ] `cp config/.env.example .env` → `DISCORD_WEBHOOK_URL` だけ設定
@@ -58,3 +60,7 @@
 - 2026-05-26: 認証情報 admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f は会話チャット内に平文残存。ユーザー側でパスワードマネージャに保存済みなら revoke/再生成は任意。
 - 2026-05-26: 家いちばスクレイパは公式 JSON API `/api/properties?orderby=price_asc&page=N` を採用。HTML パースより速い・正確・サイト負荷小。1リクエスト10件、500件総数、20ページ MAX_PAGES + SCRAPE_PRICE_CEILING (500万) で早期 break。
 - 2026-05-26: 家いちば初回スクレイプで関西圏 24件が price ≤ 300万でヒット → Discord に digest 2分割で送信成功。神戸90万円農地、京都伊根町80万円、兵庫赤穂35万円山林、大阪大東270万円戸建てなど良物件多数。
+- 2026-05-26: B (通知強化) 実装。Discord Embed の thumbnail → image (大画像)、description にクイックリンク [🗺️地図] [👀街並み] [⚠️ハザード] を追加、価格を "1,000万円" 形式に整形、AI スコアフィールドも対応。
+- 2026-05-26: C (UI 強化) 実装。ソート (新着/安い順/高い順/広い順/AIスコア降順)、住所/タイトル/市区町村部分一致検索、却下ボタン (dismissed テーブル)、★レーティング 1-5 (同じ星もう一度押しでクリア)、評価済み/却下タブ。
+- 2026-05-26: D (AI スコアリング) 実装。Claude Haiku 4.5 で preferences.yaml ベースの 0-10 採点、ai_scores テーブル + preferences_hash で再採点判定、score.yml ワークフロー (10/40分)、filter に min_ai_score (preferences.score_threshold 連動) ゲート、Discord/Dashboard にスコアバッジ表示。ANTHROPIC_API_KEY 未設定時は scoring がスキップされ filter も score 要求しない (graceful degradation)。
+- 2026-05-26: _split_sql のコメント処理バグ修正 (旧版は `-- foo\nCREATE TABLE...` 全体をスキップ、ai_scores migration が失敗していた)。
