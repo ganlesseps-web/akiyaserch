@@ -18,7 +18,9 @@ description: |
   - 私道・接道なし
 
 # このスコア以上を Discord に通知する (0 にすれば全件通知、10 で実質オフ)
-score_threshold: 6
+# 2026-05-26: AI スコアリング一旦オフ。filter は score を要求しない (0=ゲート無し)。
+# 再開する時は 6 程度に戻す + score.yml の schedule を有効化。
+score_threshold: 0
 
 # 利用するモデル (Haiku 4.5 = 速くて安い、Sonnet 4.6 = 精度高い)
 model: claude-haiku-4-5-20251001

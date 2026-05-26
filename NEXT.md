@@ -5,8 +5,9 @@ ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
-- [ ] **AI スコアリング有効化** — Anthropic Console (https://console.anthropic.com/settings/keys) で API キー作成 → `gh secret set ANTHROPIC_API_KEY` で登録 → 10/40分の自動 score ワークフローが起動
-- [ ] **preferences.yaml をカスタマイズ** — `config/preferences.yaml` の description を自分の好みに編集 (現状はデフォルト) → コミット & push → preferences_hash が変わるので全件再スコア
+- [ ] **(オフ中) AI スコアリング再開** — `config/preferences.yaml` の `score_threshold` を 6 に戻す + `.github/workflows/score.yml` の `schedule` コメント外す。既存スコアは残っているので新規物件のみ採点 → 月 $0.05 程度。
+- [ ] **(オフ中) preferences カスタマイズ** — `config/preferences.yaml` の description を自分の好みに編集 → preferences_hash が変わるので再開時に全件再採点 ($0.31 程度)。
+- [ ] (任意) ANTHROPIC_API_KEY が不要なら https://console.anthropic.com/settings/keys で revoke
 - [ ] スマホで Web 操作確認 (★レーティング・却下ボタン・検索)
 - [ ] 1日回して通知量を観察、必要なら `config/filters.yaml` の府県allowlist / NGワード調整
 - [ ] (推奨) Discord Webhook URL / Basic auth password を revoke & 再発行 (会話履歴に平文で残っているため)
@@ -64,4 +65,5 @@ ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord
 - 2026-05-26: C (UI 強化) 実装。ソート (新着/安い順/高い順/広い順/AIスコア降順)、住所/タイトル/市区町村部分一致検索、却下ボタン (dismissed テーブル)、★レーティング 1-5 (同じ星もう一度押しでクリア)、評価済み/却下タブ。
 - 2026-05-26: D (AI スコアリング) 実装。Claude Haiku 4.5 で preferences.yaml ベースの 0-10 採点、ai_scores テーブル + preferences_hash で再採点判定、score.yml ワークフロー (10/40分)、filter に min_ai_score (preferences.score_threshold 連動) ゲート、Discord/Dashboard にスコアバッジ表示。ANTHROPIC_API_KEY 未設定時は scoring がスキップされ filter も score 要求しない (graceful degradation)。
 - 2026-05-26: _split_sql のコメント処理バグ修正 (旧版は `-- foo\nCREATE TABLE...` 全体をスキップ、ai_scores migration が失敗していた)。
-- 2026-05-26: ANTHROPIC_API_KEY 登録 → 全210件をスコアリング ($0.21、Haiku 4.5)。スコア分布: 8+ 7件、7 17件、6 30件、それ以下 156件。関西圏 price≤300万 で threshold≥6 ヒットは 8件 (三重松阪 190万 8/10 が最有力)。preference カスタマイズで再採点可。
+- 2026-05-26: ANTHROPIC_API_KEY 登録 → 全210件をスコアリング ($0.31、Haiku 4.5)。スコア分布: 8+ 7件、7 17件、6 30件、それ以下 156件。関西圏 price≤300万 で threshold≥6 ヒットは 8件 (三重松阪 190万 8/10 が最有力)。
+- 2026-05-26: ユーザー判断で AI スコアリングを一旦オフ。score.yml の schedule をコメントアウト (manual `gh workflow run score` のみ)、preferences.yaml の score_threshold を 6→0 に (filter ゲート無効)。既存210件のスコアと理由は DB に保持、ダッシュボードで「AIスコア高い順」で見られる。再開はこの2ファイルを戻すだけ。
