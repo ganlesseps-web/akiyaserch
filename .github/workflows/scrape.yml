@@ -17,7 +17,9 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 13 自治体追加で yabu_indep の詳細 fetch (~50s) など増えたため 10 分に。
+    # 通常は 5-7 分で完了、超えた場合の保険値。
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
