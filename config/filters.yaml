@@ -46,6 +46,11 @@ ng_keywords:
 property_types:
   - house
 
+# True にすると normalize.is_dilapidated で「オンボロ」判定された物件を通知対象から除外。
+# 判定キーワード: 雨漏りあり / 腐食あり / シロアリ被害 / 解体前提 / 廃屋 / 大規模リフォーム必要 等
+# (否定文脈 "雨漏り対策済" "雨漏りはありません" 等は通過させる)
+exclude_dilapidated: true
+
 # 通知頻度（毎時00分のバッチ）
 notify:
   cron: "0 * * * *"  # 毎時00分

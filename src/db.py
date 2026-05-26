@@ -118,6 +118,8 @@ class Listing:
     body: str | None
     posted_at: str | None
     property_type: str | None = None  # house/land/apartment/commercial/unknown
+    dilapidated: int = 0  # 1 = オンボロ判定済み、0 = なし
+    dilapidation_reason: str | None = None  # ヒットしたキーワード/フレーズ
 
 
 def now_iso() -> str:
@@ -260,6 +262,8 @@ def init_db(path: Path | None = None) -> None:
 # 新規追加カラムは ALTER TABLE で。idempotent (重複カラムエラーは無視)。
 MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN property_type TEXT",
+    "ALTER TABLE properties ADD COLUMN dilapidated INTEGER DEFAULT 0",
+    "ALTER TABLE properties ADD COLUMN dilapidation_reason TEXT",
 ]
 
 
@@ -292,14 +296,17 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             INSERT INTO properties (
                 source, listing_id, url, title, price, prefecture, city, address,
                 area_land, area_building, thumbnail_url, body, posted_at,
-                property_type, first_seen_at, last_seen_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                property_type, dilapidated, dilapidation_reason,
+                first_seen_at, last_seen_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 listing.source, listing.listing_id, listing.url, listing.title,
                 listing.price, listing.prefecture, listing.city, listing.address,
                 listing.area_land, listing.area_building, listing.thumbnail_url,
-                listing.body, listing.posted_at, listing.property_type, now, now,
+                listing.body, listing.posted_at, listing.property_type,
+                listing.dilapidated, listing.dilapidation_reason,
+                now, now,
             ),
         )
         return cur.lastrowid, True
@@ -308,13 +315,17 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
         UPDATE properties SET
             url = ?, title = ?, price = ?, prefecture = ?, city = ?, address = ?,
             area_land = ?, area_building = ?, thumbnail_url = ?, body = ?,
-            posted_at = ?, property_type = ?, last_seen_at = ?
+            posted_at = ?, property_type = ?,
+            dilapidated = ?, dilapidation_reason = ?,
+            last_seen_at = ?
         WHERE id = ?
         """,
         (
             listing.url, listing.title, listing.price, listing.prefecture, listing.city,
             listing.address, listing.area_land, listing.area_building, listing.thumbnail_url,
-            listing.body, listing.posted_at, listing.property_type, now, row["id"],
+            listing.body, listing.posted_at, listing.property_type,
+            listing.dilapidated, listing.dilapidation_reason,
+            now, row["id"],
         ),
     )
     return row["id"], False

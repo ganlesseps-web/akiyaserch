@@ -25,7 +25,8 @@ def cfg():
         drive_max_seconds=7200,
         ng_keywords=["事故物件"],
         min_ai_score=0,
-        property_types=set(),  # 空 set = 全タイプ許可 (このテストではタイプフィルタを無効)
+        property_types=set(),  # 空 set = 全タイプ許可
+        exclude_dilapidated=False,
     )
 
 

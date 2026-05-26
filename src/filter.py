@@ -23,6 +23,7 @@ class FilterConfig:
     ng_keywords: list[str]
     min_ai_score: int  # 0 なら AI スコア無視。>0 なら scored & score >= min_ai_score を要求。
     property_types: set[str]  # 通す物件タイプ. 空 set なら全許可。
+    exclude_dilapidated: bool  # True なら is_dilapidated 判定された物件を通知対象から除外
 
     @classmethod
     def load(cls, path: Path | None = None) -> "FilterConfig":
@@ -48,6 +49,7 @@ class FilterConfig:
             ng_keywords=list(data.get("ng_keywords") or []),
             min_ai_score=min_ai_score,
             property_types=set(data.get("property_types") or []),
+            exclude_dilapidated=bool(data.get("exclude_dilapidated", False)),
         )
 
 
@@ -70,14 +72,25 @@ def passes(
 
     # 物件タイプフィルタ (一軒家のみにしたい場合 ['house'] を設定)
     if cfg.property_types:
-        ptype = row["property_type"] if "property_type" in row.keys() else None
-        # row が _LibsqlRow のとき keys() メソッドは list[str] を返す
         try:
             ptype = row["property_type"]
         except (KeyError, IndexError):
             ptype = None
         if ptype not in cfg.property_types:
             return False, f"property_type {ptype} not in {cfg.property_types}"
+
+    # オンボロ判定された物件を除外
+    if cfg.exclude_dilapidated:
+        try:
+            dilap = row["dilapidated"]
+        except (KeyError, IndexError):
+            dilap = 0
+        if dilap:
+            try:
+                reason = row["dilapidation_reason"]
+            except (KeyError, IndexError):
+                reason = None
+            return False, f"dilapidated: {reason or 'flagged'}"
 
     pref = row["prefecture"]
     if pref is None:

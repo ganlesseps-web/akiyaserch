@@ -47,6 +47,7 @@ def normalize(raw: RawListing) -> Listing:
     # スクレイパが構造化データから判定したヒントがあれば優先 (zero.estate の 物件分類 等)。
     # 無ければ title+body からキーワード分類にフォールバック。
     property_type = raw.property_type_hint or classify_property_type(raw.title, raw.body)
+    is_bad, reason = is_dilapidated(raw.title, raw.body)
 
     return Listing(
         source=raw.source,
@@ -63,6 +64,8 @@ def normalize(raw: RawListing) -> Listing:
         body=raw.body,
         posted_at=raw.posted_at,
         property_type=property_type,
+        dilapidated=1 if is_bad else 0,
+        dilapidation_reason=reason or None,
     )
 
 
@@ -81,6 +84,82 @@ _LAND_ONLY = (
     "山林", "農地", "田畑", "更地", "原野", "林地", "空き地", "空地",
     "宅地分譲", "分譲地", "別荘地のみ", "土地のみ",
 )
+
+
+def is_dilapidated(title: str | None, body: str | None) -> tuple[bool, str]:
+    """オンボロ (大幅修繕しないと住めない) 判定。
+
+    確実なシグナル (例: "解体前提", "住める状態ではありません") は即 True。
+    "雨漏り" / "腐食" / "シロアリ" 等は否定文脈 (なし/無し/ありません/修繕済 等) を
+    確認してから判定する。これにより「雨漏り対策済み」「雨漏りはありません」を
+    弾かない。
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return False, ""
+
+    # 確実なオンボロ指標
+    DEFINITIVE = (
+        "住める状態ではあり",   # "ではありません" を catch (substring match)
+        "住居としては使用",     # "住居としては使用不可" 等
+        "居住不可", "住居不可",
+        "解体前提", "解体推奨", "取り壊し前提", "取り壊しを前提",
+        "廃屋", "廃墟", "倒壊", "全壊", "半壊",
+        "残置物のみ", "ご自身で解体",
+    )
+    for kw in DEFINITIVE:
+        if kw in text:
+            return True, kw
+
+    # 文脈依存: keyword が否定文脈なら OK と判定
+    # (key: 不利キーワード, value: 否定 / 修繕済 を示すパターン list)
+    CONTEXTUAL = {
+        "雨漏り": [
+            "雨漏りはありません", "雨漏りはござ", "雨漏りはなく",
+            "雨漏りはない", "雨漏りなし", "雨漏り無し",
+            "雨漏り対策", "雨漏り修繕済", "雨漏り修理済",
+            "雨漏り等の損傷はあり",   # "...はありません" を catch
+            "雨漏り等の損傷はござ",
+            "雨漏り等の形跡はあり",
+            "雨漏り等の形跡はござ",
+            "重大な瑕疵は見受け",     # 「雨漏り・...・シロアリ被害等の重大な瑕疵は見受けられません」
+            "屋根葺き替え",
+            "雨漏りや構造に関わる大規模修繕は想定しておらず",
+            "雨漏りリスクや築年数を考慮",
+        ],
+        "腐食": [
+            "腐食はあり",     # ありません 用
+            "腐食はござ",
+            "腐食なし", "腐食無し", "腐食はない", "腐食はなく",
+            "腐食しておりません",
+            "腐食に強い",     # 「腐食に強いポリエチレン製」等 (アンチコロージョン素材言及)
+            "腐食対策", "腐食防止", "腐食しにくい", "防腐",
+            "腐食しないよう",
+        ],
+        "シロアリ被害": [
+            "シロアリ被害なし", "シロアリ被害は見受けられ",
+            "シロアリ被害はあり",   # ありません 用
+            "シロアリ被害等の重大な瑕疵は",
+        ],
+        "シロアリ食害": [
+            "シロアリ食害なし", "シロアリ食害無し", "シロアリ食害はあり",
+        ],
+    }
+    for bad_kw, ok_patterns in CONTEXTUAL.items():
+        if bad_kw in text:
+            if not any(p in text for p in ok_patterns):
+                return True, bad_kw
+
+    # 大規模修繕系: "必要" / "前提" の文脈で
+    if "大規模" in text:
+        for need_pat in ("大規模なリフォームが必要", "大規模リフォームが必要",
+                         "大規模なリフォーム必要", "大規模な修繕が必要",
+                         "大規模修繕が必要", "大規模な修繕を要", "大規模なリノベを要",
+                         "フルリノベ前提", "フルリノベが必要", "フルリノベーション必要"):
+            if need_pat in text:
+                return True, need_pat
+
+    return False, ""
 
 
 def classify_property_type(title: str | None, body: str | None) -> str:
