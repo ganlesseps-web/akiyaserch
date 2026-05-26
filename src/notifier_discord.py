@@ -5,6 +5,7 @@ import logging
 import os
 import sqlite3
 import time
+import urllib.parse
 
 import httpx
 
@@ -56,25 +57,83 @@ def notify(
     return {"scanned": len(rows), "passed": len(passed), "sent": len(passed)}
 
 
+# --------- URL builders for quick links ---------
+
+def _maps_url(address: str) -> str:
+    """Google Maps 検索リンク。住所そのまま query に渡せる。"""
+    return f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(address)}"
+
+
+def _streetview_url(address: str) -> str:
+    """Google ストリートビュー (近隣の最初のパノラマを表示)."""
+    return (
+        "https://www.google.com/maps/@?api=1&map_action=pano"
+        f"&query={urllib.parse.quote(address)}"
+    )
+
+
+def _hazard_url(address: str | None) -> str:
+    """国交省「重ねるハザードマップ」ポータル。住所検索 UI 付き。"""
+    return "https://disaportal.gsi.go.jp/"
+
+
+def _format_price(price: int | None) -> str:
+    if price is None:
+        return "価格不明"
+    if price == 0:
+        return "0円（無償譲渡）"
+    if price >= 10_000:
+        man = price // 10_000
+        rem = price % 10_000
+        if rem == 0:
+            return f"{man:,}万円"
+        return f"{man:,}万{rem:,}円"
+    return f"{price:,}円"
+
+
 def _post_embed(webhook: str, row: sqlite3.Row) -> None:
-    price = "0円" if row["price"] == 0 else (f"{row['price']:,}円" if row["price"] else "価格不明")
-    area = f"土地 {row['area_land']:.0f}㎡" if row["area_land"] else None
-    location = " ".join(filter(None, [row["prefecture"], row["city"]]))
+    location_parts = list(filter(None, [row["prefecture"], row["city"]]))
+    location = " ".join(location_parts) or "—"
+    address = row["address"] or location
+
+    # 即タップできるクイックリンク
+    links = []
+    if address and address != "—":
+        links.append(f"[🗺️ 地図]({_maps_url(address)})")
+        links.append(f"[👀 街並み]({_streetview_url(address)})")
+    links.append(f"[⚠️ ハザード]({_hazard_url(address)})")
+    links_line = " ｜ ".join(links)
+
+    body_preview = (row["body"] or "").strip()
+    # Discord description 上限 4096 文字、見やすさのため 250 文字程度に
+    if len(body_preview) > 250:
+        body_preview = body_preview[:250].rstrip() + "…"
+
+    description_parts = [links_line]
+    if body_preview:
+        description_parts.append(body_preview)
+    description = "\n\n".join(description_parts)
+
+    fields = [
+        {"name": "💰 価格", "value": _format_price(row["price"]), "inline": True},
+        {"name": "📍 所在地", "value": location, "inline": True},
+    ]
+    if row["area_land"]:
+        fields.append({"name": "📐 土地", "value": f"{row['area_land']:.0f}㎡", "inline": True})
+    if row["area_building"]:
+        fields.append({"name": "🏠 建物", "value": f"{row['area_building']:.0f}㎡", "inline": True})
 
     embed = {
         "title": (row["title"] or "(タイトルなし)")[:250],
         "url": row["url"],
         "color": EMBED_COLOR,
-        "fields": [
-            {"name": "価格", "value": price, "inline": True},
-            {"name": "所在地", "value": location or "—", "inline": True},
-        ],
+        "description": description[:4000],
+        "fields": fields,
         "footer": {"text": f"source: {row['source']}"},
     }
-    if area:
-        embed["fields"].append({"name": "面積", "value": area, "inline": True})
     if row["thumbnail_url"]:
-        embed["thumbnail"] = {"url": row["thumbnail_url"]}
+        # image (大きく表示) — スマホで判断しやすい
+        embed["image"] = {"url": row["thumbnail_url"]}
 
     _post(webhook, {"embeds": [embed]})
 
@@ -82,12 +141,18 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
 def _post_digest(webhook: str, rows: list[sqlite3.Row]) -> None:
     lines = [f"**新着 {len(rows)} 件**"]
     for r in rows:
-        price = "0円" if r["price"] == 0 else (f"{r['price']:,}円" if r["price"] else "価格不明")
+        price = _format_price(r["price"])
         loc = " ".join(filter(None, [r["prefecture"], r["city"]])) or "—"
-        title = (r["title"] or "")[:60]
-        lines.append(f"- [{price} / {loc}] {title}\n  <{r['url']}>")
+        title = (r["title"] or "")[:50]
+        addr = r["address"] or loc
+        maps = _maps_url(addr) if addr and addr != "—" else None
+        line = f"- **{price}** {loc} — {title} <{r['url']}>"
+        if maps:
+            line += f" [🗺️]({maps})"
+        lines.append(line)
+
     # Discord は1メッセージ2000文字制限
-    chunk = []
+    chunk: list[str] = []
     cur_len = 0
     for line in lines:
         if cur_len + len(line) + 1 > 1900:

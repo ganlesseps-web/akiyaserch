@@ -71,6 +71,17 @@ CREATE TABLE IF NOT EXISTS read_status (
     read_at       TEXT    NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS dismissed (
+    property_id   INTEGER PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+    dismissed_at  TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ratings (
+    property_id   INTEGER PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+    rating        INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    rated_at      TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS drive_cache (
     address       TEXT    PRIMARY KEY,
     origin        TEXT    NOT NULL,
