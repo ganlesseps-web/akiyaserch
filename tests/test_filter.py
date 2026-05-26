@@ -19,6 +19,7 @@ def conn():
 def cfg():
     return flt.FilterConfig(
         price_max=3_000_000,
+        price_min=0,
         prefectures={"大阪府", "兵庫県", "京都府"},
         borderline_prefectures={"岡山県"},
         drive_origin="大阪駅",

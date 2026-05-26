@@ -16,6 +16,7 @@ DEFAULT_FILTERS_PATH = Path("config/filters.yaml")
 @dataclass
 class FilterConfig:
     price_max: int
+    price_min: int  # 0 なら下限なし。0円物件除外したい場合 500000 などに設定
     prefectures: set[str]
     borderline_prefectures: set[str]
     drive_origin: str
@@ -42,6 +43,7 @@ class FilterConfig:
 
         return cls(
             price_max=int(data.get("price_max", 3_000_000)),
+            price_min=int(data.get("price_min", 0)),
             prefectures=set(data.get("prefectures") or []),
             borderline_prefectures=set(data.get("borderline_prefectures") or []),
             drive_origin=data.get("drive_origin", ""),
@@ -64,6 +66,8 @@ def passes(
     price = row["price"]
     if price is not None and price > cfg.price_max:
         return False, f"price {price} > {cfg.price_max}"
+    if price is not None and cfg.price_min > 0 and price < cfg.price_min:
+        return False, f"price {price} < min {cfg.price_min}"
 
     body = (row["title"] or "") + " " + (row["body"] or "")
     for ng in cfg.ng_keywords:

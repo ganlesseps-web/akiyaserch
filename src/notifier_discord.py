@@ -6,6 +6,7 @@ import os
 import sqlite3
 import time
 import urllib.parse
+from typing import Any
 
 import httpx
 
@@ -77,6 +78,15 @@ def _hazard_url(address: str | None) -> str:
     return "https://disaportal.gsi.go.jp/"
 
 
+def _subsidy_url(prefecture: str | None, city: str | None) -> str | None:
+    """その市区町村の空き家リフォーム補助金を Google で検索するリンク。"""
+    parts = [p for p in (prefecture, city) if p]
+    if not parts:
+        return None
+    q = " ".join(parts) + " 空き家 補助金 リフォーム"
+    return f"https://www.google.com/search?q={urllib.parse.quote(q)}"
+
+
 def _safe_get(row: Any, key: str, default: Any = None) -> Any:
     """sqlite3.Row / _LibsqlRow どちらでも安全に取得 (キー欠如時 default)。"""
     try:
@@ -110,6 +120,9 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
         links.append(f"[🗺️ 地図]({_maps_url(address)})")
         links.append(f"[👀 街並み]({_streetview_url(address)})")
     links.append(f"[⚠️ ハザード]({_hazard_url(address)})")
+    sub = _subsidy_url(row["prefecture"], row["city"])
+    if sub:
+        links.append(f"[💰 補助金]({sub})")
     links_line = " ｜ ".join(links)
 
     body_preview = (row["body"] or "").strip()
