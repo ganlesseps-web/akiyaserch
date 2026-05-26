@@ -64,3 +64,4 @@ ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord
 - 2026-05-26: C (UI 強化) 実装。ソート (新着/安い順/高い順/広い順/AIスコア降順)、住所/タイトル/市区町村部分一致検索、却下ボタン (dismissed テーブル)、★レーティング 1-5 (同じ星もう一度押しでクリア)、評価済み/却下タブ。
 - 2026-05-26: D (AI スコアリング) 実装。Claude Haiku 4.5 で preferences.yaml ベースの 0-10 採点、ai_scores テーブル + preferences_hash で再採点判定、score.yml ワークフロー (10/40分)、filter に min_ai_score (preferences.score_threshold 連動) ゲート、Discord/Dashboard にスコアバッジ表示。ANTHROPIC_API_KEY 未設定時は scoring がスキップされ filter も score 要求しない (graceful degradation)。
 - 2026-05-26: _split_sql のコメント処理バグ修正 (旧版は `-- foo\nCREATE TABLE...` 全体をスキップ、ai_scores migration が失敗していた)。
+- 2026-05-26: ANTHROPIC_API_KEY 登録 → 全210件をスコアリング ($0.21、Haiku 4.5)。スコア分布: 8+ 7件、7 17件、6 30件、それ以下 156件。関西圏 price≤300万 で threshold≥6 ヒットは 8件 (三重松阪 190万 8/10 が最有力)。preference カスタマイズで再採点可。
