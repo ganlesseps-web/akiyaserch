@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-ABCD + 一軒家フィルタ + オンボロ除外実装完了 (2026-05-26)。一軒家のうち雨漏り/腐食/シロアリ被害/解体前提/大規模修繕必要 等の「住むには大幅修繕が必要」な9件 (5.7%) を自動除外。否定文脈 (雨漏り対策済/腐食に強い/重大な瑕疵は見受けられません) は通過させて false positive 抑制。Turso 210件のうち house 140 (うちオンボロ9) / land 47 / apartment 19 / unknown 4。AI スコアリングはコスト管理のため一旦オフ中。
+初心者向け調整 + 伊賀市自治体scraper 追加完了 (2026-05-26)。filter: price_min ¥50万 (0円物件除外)、海沿い NG 強化 (淡路島自体OKだが「海の絶景/海沿い/オーシャンビュー」等の海フロント物件は除外)、Discord embed に💰補助金検索リンク追加。Turso 228件 (ieichiba 200, minna_0en 10, iga_akiyabank 18)。関西house filter pass 16+4=20件。AI スコアリングはオフ中。残り 5自治体 (神河/多可/たつの/養父/名張) は別セッションで実装予定。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -20,10 +20,12 @@ ABCD + 一軒家フィルタ + オンボロ除外実装完了 (2026-05-26)。一
 
 ## Next (Remote-safe)
 - [x] `src/scrapers/ieichiba.py`: 家いちば JSON API 経由 (2026-05-26 完了、200件取得実績)
-- [ ] `src/scrapers/akiya_bank.py`: 全国版空き家・空き地バンク (LIFULL or アットホーム) スクレイパ
-  - LIFULL は CloudFront bot block あり (実 User-Agent で回避可、ただし利用規約再確認)
-  - アットホーム akiya-athome.jp は 403 (要調査)
-- [ ] **次フェーズ候補 B (通知強化)**: Discord Embed に物件画像メイン表示 + Google Maps リンク + ストリートビュー + ハザードマップリンク
+- [x] `src/scrapers/iga_akiyabank.py`: 三重県伊賀市公式空き家バンク (2026-05-26 完了、18件取得)
+- [ ] 残り自治体 5サイト (ユーザー指定): 兵庫県神河町・多可町・たつの市・養父市、三重県名張市
+  - 各サイトの空き家バンク URL を発見 → 構造解析 → scraper実装。1サイトあたり ~2時間
+  - 候補 URL (要検証): town.kamikawa.hyogo.jp, town.taka.lg.jp, city.tatsuno.lg.jp, city.yabu.hyogo.jp, city.nabari.lg.jp
+- [ ] (任意) iga_akiyabank で詳細ページから area_land / area_building 取得 (現状は list 1リクのみ)
+- [ ] (任意) `src/scrapers/akiya_bank.py`: 全国版空き家バンク (LIFULL/アットホーム) — Playwright 必須
 - [ ] `src/filter.py`: Distance Matrix API 呼び出し本体を実装し、`drive_cache` テーブルに保存
 - [ ] DEPLOY.md の `turso db create --location nrt` を `aws-ap-northeast-1` に修正
 - [ ] DEPLOY.md の Turso URL 例を `libsql://` から `https://` に書き換え (現状の libsql-client は ws ハンドシェイクが 400 を返すため)
@@ -69,3 +71,5 @@ ABCD + 一軒家フィルタ + オンボロ除外実装完了 (2026-05-26)。一
 - 2026-05-26: ユーザー判断で AI スコアリングを一旦オフ。score.yml の schedule をコメントアウト (manual `gh workflow run score` のみ)、preferences.yaml の score_threshold を 6→0 に (filter ゲート無効)。既存210件のスコアと理由は DB に保持、ダッシュボードで「AIスコア高い順」で見られる。再開はこの2ファイルを戻すだけ。
 - 2026-05-26: 「農地・山林は不要、一軒家のみ」要件に対応。normalize.classify_property_type で title+body から house/land/apartment/commercial/unknown を判定、property_types: [house] を filters.yaml に追加して通知対象を一軒家に限定。zero.estate は 物件分類 を hint として直接マップ (土地→land 等)。minna_0en の body 抽出を 物件概要 テーブル連結に変更 (旧版は HTML 全体を get_text して他物件の "リゾートマンション" が混入し apartment 誤判定するバグあり)。reclassify CLI で既存210件を再分類: house 140, land 47, apartment 19, unknown 4。ダッシュボードに property_type 別タブ追加。
 - 2026-05-26: 「オンボロ物件 (大幅修繕しないと住めない家) を除外」要件に対応。normalize.is_dilapidated で確実な指標 (住める状態ではあり/解体前提/廃屋/倒壊 等) と文脈依存指標 (雨漏り/腐食/シロアリ被害 — 否定文脈 "対策済/重大な瑕疵は見受けられません" を確認) で判定。filters.yaml に exclude_dilapidated: true。DB に dilapidated (INT) と dilapidation_reason (TEXT) 列追加。house 140件中 9件 (5.7%) がオンボロ判定: 三重大台町 母屋住めない、千葉野田 雨漏りあり、兵庫宝塚 雨漏り腐食、兵庫姫路 大規模リフォーム必要、和歌山白浜 腐食、ほか4件。
+- 2026-05-26: 「初心者向け費用最小化」相談に対応。filters.yaml に price_min: 500000 追加 (0円物件は本体無料でも修繕費+取得税で結局500-1500万かかるため、リフォーム済 50-300万帯が実用的にお得)。海沿いNG keywords を「海の絶景/海絶景/オーシャンビュー/海一望」等まで強化 (淡路島自体は OK 残し、海フロント物件のみ除外)。Discord embed に💰補助金検索リンク追加 (Google で「<市区町村> 空き家 補助金」検索する shortcut)。
+- 2026-05-26: 自治体scraper 1本目として三重県伊賀市公式 (iga-akiyabank.com) を追加。18件取得、house のみ、賃貸はスキップ、address は 「伊賀市〇〇」→「三重県伊賀市〇〇」 正規化。filter pass 4件: 伊勢路 200万 / 上神戸 250万 / 大内 300万 / 島ヶ原 300万。残り 5自治体 (神河/多可/たつの/養父/名張) はユーザー指定済、次セッションで追加。
