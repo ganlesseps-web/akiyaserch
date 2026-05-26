@@ -23,6 +23,19 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
+      - name: Verify secrets
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          missing=""
+          [ -z "$TURSO_DATABASE_URL" ] && missing="$missing TURSO_DATABASE_URL"
+          [ -z "$DISCORD_WEBHOOK_URL" ] && missing="$missing DISCORD_WEBHOOK_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing. See DEPLOY.md."
+            exit 1
+          fi
+
       - name: Install
         run: pip install -e .
 

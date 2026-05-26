@@ -48,3 +48,4 @@
 - 2026-05-26: FastAPI に Basic 認証追加 (`DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD` 未設定時は no-auth)。`/healthz` は認証バイパス。
 - 2026-05-26: GitHub Actions scrape は 30分間隔 (private repo 2000分/月の枠を考慮)。notify は毎時。月間 ~1080分使用見込み。public repo にすれば無制限。
 - 2026-05-26: スマホ対応として viewport meta + 480px 以下のレスポンシブCSSを追加。PWA 風にホーム画面追加可。
+- 2026-05-26: GitHub Actions の scrape/notify ワークフローに secrets early-exit ガード追加。secrets 未設定時は install 前に即 fail して時間を浪費しない。
