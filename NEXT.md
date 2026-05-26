@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord Embed 強化 (画像/地図/ハザード)、C: ダッシュボード強化 (ソート5種/検索/却下/★レーティング/スコア badge)、D: Claude Haiku で AI スコアリング (preferences.yaml ベース)。AI スコアリングは ANTHROPIC_API_KEY を GitHub Secret に登録すれば自動起動 (score.yml が 10/40分実行)。それまでは scoring がスキップされ filter は score を要求しない (min_ai_score=0 として動く)。
+ABCD + 一軒家フィルタ実装完了 (2026-05-26)。物件タイプ判定 (house/land/apartment/commercial/unknown) で農地/山林/マンションを通知対象から除外。Turso 210件のうち house 140件、land 47件、apartment 19件、unknown 4件。関西圏 price≤300万 で house のみが新フィルタの通知対象 (約20件)。ダッシュボードに 🏠一軒家 / 🏞️土地 / 🏢マンション タブ追加。AI スコアリングはコスト管理のため一旦オフ中。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -67,3 +67,4 @@ ABCD 全部実装完了 (2026-05-26)。A: 家いちば 200件追加、B: Discord
 - 2026-05-26: _split_sql のコメント処理バグ修正 (旧版は `-- foo\nCREATE TABLE...` 全体をスキップ、ai_scores migration が失敗していた)。
 - 2026-05-26: ANTHROPIC_API_KEY 登録 → 全210件をスコアリング ($0.31、Haiku 4.5)。スコア分布: 8+ 7件、7 17件、6 30件、それ以下 156件。関西圏 price≤300万 で threshold≥6 ヒットは 8件 (三重松阪 190万 8/10 が最有力)。
 - 2026-05-26: ユーザー判断で AI スコアリングを一旦オフ。score.yml の schedule をコメントアウト (manual `gh workflow run score` のみ)、preferences.yaml の score_threshold を 6→0 に (filter ゲート無効)。既存210件のスコアと理由は DB に保持、ダッシュボードで「AIスコア高い順」で見られる。再開はこの2ファイルを戻すだけ。
+- 2026-05-26: 「農地・山林は不要、一軒家のみ」要件に対応。normalize.classify_property_type で title+body から house/land/apartment/commercial/unknown を判定、property_types: [house] を filters.yaml に追加して通知対象を一軒家に限定。zero.estate は 物件分類 を hint として直接マップ (土地→land 等)。minna_0en の body 抽出を 物件概要 テーブル連結に変更 (旧版は HTML 全体を get_text して他物件の "リゾートマンション" が混入し apartment 誤判定するバグあり)。reclassify CLI で既存210件を再分類: house 140, land 47, apartment 19, unknown 4。ダッシュボードに property_type 別タブ追加。
