@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-ABCD + 一軒家フィルタ実装完了 (2026-05-26)。物件タイプ判定 (house/land/apartment/commercial/unknown) で農地/山林/マンションを通知対象から除外。Turso 210件のうち house 140件、land 47件、apartment 19件、unknown 4件。関西圏 price≤300万 で house のみが新フィルタの通知対象 (約20件)。ダッシュボードに 🏠一軒家 / 🏞️土地 / 🏢マンション タブ追加。AI スコアリングはコスト管理のため一旦オフ中。
+ABCD + 一軒家フィルタ + オンボロ除外実装完了 (2026-05-26)。一軒家のうち雨漏り/腐食/シロアリ被害/解体前提/大規模修繕必要 等の「住むには大幅修繕が必要」な9件 (5.7%) を自動除外。否定文脈 (雨漏り対策済/腐食に強い/重大な瑕疵は見受けられません) は通過させて false positive 抑制。Turso 210件のうち house 140 (うちオンボロ9) / land 47 / apartment 19 / unknown 4。AI スコアリングはコスト管理のため一旦オフ中。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -68,3 +68,4 @@ ABCD + 一軒家フィルタ実装完了 (2026-05-26)。物件タイプ判定 (h
 - 2026-05-26: ANTHROPIC_API_KEY 登録 → 全210件をスコアリング ($0.31、Haiku 4.5)。スコア分布: 8+ 7件、7 17件、6 30件、それ以下 156件。関西圏 price≤300万 で threshold≥6 ヒットは 8件 (三重松阪 190万 8/10 が最有力)。
 - 2026-05-26: ユーザー判断で AI スコアリングを一旦オフ。score.yml の schedule をコメントアウト (manual `gh workflow run score` のみ)、preferences.yaml の score_threshold を 6→0 に (filter ゲート無効)。既存210件のスコアと理由は DB に保持、ダッシュボードで「AIスコア高い順」で見られる。再開はこの2ファイルを戻すだけ。
 - 2026-05-26: 「農地・山林は不要、一軒家のみ」要件に対応。normalize.classify_property_type で title+body から house/land/apartment/commercial/unknown を判定、property_types: [house] を filters.yaml に追加して通知対象を一軒家に限定。zero.estate は 物件分類 を hint として直接マップ (土地→land 等)。minna_0en の body 抽出を 物件概要 テーブル連結に変更 (旧版は HTML 全体を get_text して他物件の "リゾートマンション" が混入し apartment 誤判定するバグあり)。reclassify CLI で既存210件を再分類: house 140, land 47, apartment 19, unknown 4。ダッシュボードに property_type 別タブ追加。
+- 2026-05-26: 「オンボロ物件 (大幅修繕しないと住めない家) を除外」要件に対応。normalize.is_dilapidated で確実な指標 (住める状態ではあり/解体前提/廃屋/倒壊 等) と文脈依存指標 (雨漏り/腐食/シロアリ被害 — 否定文脈 "対策済/重大な瑕疵は見受けられません" を確認) で判定。filters.yaml に exclude_dilapidated: true。DB に dilapidated (INT) と dilapidation_reason (TEXT) 列追加。house 140件中 9件 (5.7%) がオンボロ判定: 三重大台町 母屋住めない、千葉野田 雨漏りあり、兵庫宝塚 雨漏り腐食、兵庫姫路 大規模リフォーム必要、和歌山白浜 腐食、ほか4件。
