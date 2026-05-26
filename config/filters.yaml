@@ -1,0 +1,47 @@
+# 通知対象フィルタ
+# 条件は (price <= price_max) AND (prefecture in allowlist OR within drive_time_hours from origin)
+
+# 価格上限（円）。みんなの0円物件は実質 0 円のみ。他ソース併用時に効く。
+price_max: 3000000
+
+# 通知対象の都道府県 allowlist
+# 大阪駅から車2時間圏内の府県をベースに、ユーザー任意で追加
+prefectures:
+  # 大阪駅から車2時間圏内（高速利用）
+  - 大阪府
+  - 京都府
+  - 兵庫県
+  - 奈良県
+  - 和歌山県
+  - 滋賀県
+  - 三重県
+  - 徳島県
+  - 香川県
+  - 岡山県
+  # ユーザー任意追加
+  # - 鳥取県
+  # - 福井県
+
+# 境界判定（後で実装）: allowlist に含まれていても
+# Distance Matrix API で 2時間超なら除外する府県
+borderline_prefectures:
+  - 三重県
+  - 岡山県
+  - 徳島県
+  - 香川県
+
+# 大阪駅 を起点に車2時間 (秒) 以内のみ通すしきい値
+drive_origin: "大阪駅, 大阪府大阪市北区梅田3丁目1-1"
+drive_max_seconds: 7200
+
+# 物件タイトル/本文に含まれていたら除外する NG ワード
+ng_keywords:
+  - 事故物件
+  - 市街化調整区域内のみ
+  # - 再建築不可  # 必要に応じて
+
+# 通知頻度（毎時00分のバッチ）
+notify:
+  cron: "0 * * * *"  # 毎時00分
+  batch_minutes: 60  # この時間内に貯まった新着をまとめる
+  digest_threshold: 10  # 10件超なら個別→ダイジェストへ

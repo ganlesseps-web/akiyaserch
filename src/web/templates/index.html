@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>trade — 0円物件 dashboard</title>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<style>
+  body { font-family: -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; max-width: 1100px; margin: 1rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  nav a { margin-right: 1rem; text-decoration: none; padding: 0.3rem 0.6rem; border-radius: 4px; color: #555; }
+  nav a.active { background: #2ecc71; color: white; }
+  .card { display: grid; grid-template-columns: 120px 1fr auto; gap: 1rem; padding: 0.8rem; border-bottom: 1px solid #eee; align-items: center; }
+  .card.read { opacity: 0.5; }
+  .card img { width: 120px; height: 90px; object-fit: cover; border-radius: 4px; background: #f5f5f5; }
+  .meta { font-size: 0.85rem; color: #666; }
+  .price { font-weight: bold; color: #2ecc71; }
+  .actions button { font-size: 1.2rem; background: none; border: 1px solid #ddd; border-radius: 4px; padding: 0.3rem 0.6rem; cursor: pointer; margin-left: 0.3rem; }
+  .empty { text-align: center; color: #999; padding: 3rem; }
+  a.title { color: #222; text-decoration: none; font-weight: 600; }
+  a.title:hover { color: #2ecc71; }
+</style>
+</head>
+<body>
+<h1>🏠 trade — 0円・格安物件</h1>
+<nav>
+  {% for v, label in [("all","すべて"),("unread","未読"),("favorites","★お気に入り"),("notified","通知済み")] %}
+    <a href="/?view={{v}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts[v]}})</a>
+  {% endfor %}
+</nav>
+
+{% if not rows %}
+  <p class="empty">物件がありません。<code>trade scrape</code> を実行してください。</p>
+{% endif %}
+
+{% for r in rows %}
+<div class="card {{ 'read' if r['is_read'] else '' }}">
+  {% if r['thumbnail_url'] %}
+    <img src="{{ r['thumbnail_url'] }}" loading="lazy" alt="">
+  {% else %}
+    <div style="width:120px;height:90px;background:#f5f5f5;border-radius:4px;"></div>
+  {% endif %}
+  <div>
+    <a class="title" href="{{ r['url'] }}" target="_blank" rel="noopener">{{ r['title'] }}</a>
+    <div class="meta">
+      <span class="price">
+        {%- if r['price'] == 0 -%}0円
+        {%- elif r['price'] -%}{{ "{:,}".format(r['price']) }}円
+        {%- else -%}価格不明{%- endif -%}
+      </span>
+      ／ {{ r['prefecture'] or '?' }} {{ r['city'] or '' }}
+      {% if r['area_land'] %}／ 土地 {{ "%.0f"|format(r['area_land']) }}㎡{% endif %}
+      ／ <span style="color:#aaa;">{{ r['source'] }}</span>
+      ／ <span style="color:#aaa;">{{ r['first_seen_at'][:10] }}</span>
+    </div>
+  </div>
+  <div class="actions">
+    <button hx-post="/property/{{r['id']}}/favorite" hx-swap="innerHTML">
+      {{ '★' if r['is_fav'] else '☆' }}
+    </button>
+    <button hx-post="/property/{{r['id']}}/read" hx-swap="innerHTML">
+      {{ '既読' if r['is_read'] else '未読' }}
+    </button>
+  </div>
+</div>
+{% endfor %}
+
+</body>
+</html>
