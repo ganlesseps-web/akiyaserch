@@ -85,7 +85,11 @@ class AkiyaAthomeBaseScraper:
 
     @property
     def list_url(self) -> str:
-        return f"{self.base_url}/buy/house/area/{self.area_path}/list"
+        # area_path 指定があれば area 絞り URL、空なら自治体全体の list を使う
+        # (小規模自治体専用サブドメインの場合、area 指定が無くても自治体内のみが出る)
+        if self.area_path:
+            return f"{self.base_url}/buy/house/area/{self.area_path}/list"
+        return f"{self.base_url}/buy/house/list"
 
     def fetch(self, client: httpx.Client) -> Iterator[RawListing]:
         # 共有 client は使わず、akiya-athome 向け verify=False client を都度作る。
@@ -273,4 +277,31 @@ class MimasakaAkiyabankScraper(AkiyaAthomeBaseScraper):
     source = "mimasaka_akiyabank"
     subdomain = "mimasaka-c33215"
     area_path = "okayamaken/mimasakashi"
+    prefecture = "岡山県"
+
+
+class AyabeAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """京都府綾部市 (ayabe-c26203.akiya-athome.jp).
+    自治体専用サブドメインなので area_path 不要 (/buy/house/list で全件)."""
+    source = "ayabe_akiyabank"
+    subdomain = "ayabe-c26203"
+    area_path = ""
+    prefecture = "京都府"
+
+
+class NishiawakuraAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県西粟倉村 (nishiawakura-v33643.akiya-athome.jp).
+    自治体専用サブドメインなので area_path 不要."""
+    source = "nishiawakura_akiyabank"
+    subdomain = "nishiawakura-v33643"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class NagiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県奈義町 (nagi-t33623.akiya-athome.jp).
+    自治体公式が akiya-athome に物件管理を委託している。"""
+    source = "nagi_akiyabank"
+    subdomain = "nagi-t33623"
+    area_path = ""
     prefecture = "岡山県"

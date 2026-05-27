@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-自治体scraper 13本追加 → 本番反映 → Discord 通知まで完走 (2026-05-27)。指定14自治体すべてカバー: 伊賀(既), 神河21, 多可14, たつの44, 養父39 (独立サイト), 京丹後116, 福知山0, 名張126, 高島12, 五條6, 下市22, 古座川0/有田川0 (わかやまLIFE), 美作13。akiya-athome.jp プラットフォーム上の6自治体は汎用 scraper で1本に統合。GitHub Actions 本番実行で raw 640件、notify は `scanned=614 passed=205 sent=205` で Discord に205件をダイジェスト送信。akiya-athome は中間証明書欠落で SSL 検証失敗するため `verify=False` の専用 client を採用 (truststore は GHA Ubuntu では救えなかった)。scrape timeout 5→10分。
+補助金充実の関西圏自治体 8件を追加実装 (2026-05-27 セッション2)。前回の14自治体に加えて: 綾部2/西粟倉1/奈義6 (akiya-athome 既存ベース流用) + 甲賀24/宇陀31/大台28/南丹57/丹波篠山12 (独自 scraper) = +161件。与謝野町・米原市は空き家バンク URL 未公開のため見送り。AkiyaAthomeBaseScraper を改良し、area_path 空でも `/buy/house/list` で取得可能に (自治体専用サブドメイン用)。現在 21自治体 scraper、Discord 通知は GitHub Actions の次回 cron で反映予定。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -22,6 +22,10 @@
 - [x] `src/scrapers/ieichiba.py`: 家いちば JSON API 経由 (2026-05-26 完了、200件取得実績)
 - [x] `src/scrapers/iga_akiyabank.py`: 三重県伊賀市公式空き家バンク (2026-05-26 完了、18件取得)
 - [x] 自治体scraper 13本追加 (2026-05-27 完了): 神河/多可/たつの/養父独立/京丹後/福知山/名張/高島/五條/下市/わかやまLIFE/美作 + akiya-athome 汎用ベース
+- [x] 補助金充実 8自治体追加 (2026-05-27 セッション2 完了): 綾部/西粟倉/奈義/甲賀/宇陀/大台/南丹/丹波篠山
+- [ ] (任意) 与謝野町の akiya-athome subdomain or 一覧 URL 発見 → scraper 追加
+- [ ] (任意) 米原市の空き家バンク (現在公開バンク無し、市役所相談ベース運用らしい)。公開された時点で追加検討
+- [ ] (任意) classo (丹波篠山) のページネーション。サイト側で page/2/ も page/1/ と同じ12件返してくる挙動。総13ページあるはずなのでURL pattern を再調査
 - [ ] (任意) iga_akiyabank で詳細ページから area_land / area_building 取得 (現状は list 1リクのみ)
 - [ ] (任意) 福知山市が物件追加されたとき自動取得可 (現状 0 件で scraper 待機)
 - [ ] (任意) わかやまLIFE のフィルタ URL を再調査 (akiya_area パラメータが効かないため全和歌山県取得→住所で絞り込み中)。古座川/有田川が登録された時に動くが、和歌山県他自治体の物件も増えたら住所filter は重くなる
@@ -83,3 +87,6 @@
 - 2026-05-27: GitHub Actions Ubuntu で akiya-athome.jp が CERTIFICATE_VERIFY_FAILED (truststore でも救えない、Cybertrust Japan SureServer CA G4 が Ubuntu の trust store にない)。akiya_athome.py 内に `verify=False` 専用 client + `_polite_get_relaxed()` を設置し、共有 client を無視して自前 client を使う形に変更。自治体公式の空き家サイトで credentials も扱わないため MITM リスク許容。他 scraper への影響なし (truststore のままで動作)。
 - 2026-05-27: scrape workflow の timeout を 5→10 分に拡張。13自治体追加で yabu_indep の詳細 fetch (~50s) など増え 5 分上限で打ち切られた。timeout は保険値で通常実行時間 (5-7分) は変わらないため Actions 枠消費は実質増えない。
 - 2026-05-27: 本番反映完了。手動 trigger した scrape で全 14自治体 (akiya-athome 6本含む) が動作確認、raw 640件 Turso に投入。続けて notify を手動 trigger し `scanned=614 passed=205 sent=205` で Discord に205件分のダイジェスト送信成功 (6 POST、204 No Content)。以降は cron (scrape 30分毎、notify 毎時00分) で自動更新。
+- 2026-05-27 (セッション2): ユーザー要望「補助金充実+住みやすい自治体を追加」に対応。Web 調査で関西圏 14候補 (★1-3) を発掘、★★★ 10件を実装範囲に。うち綾部市/西粟倉村/奈義町/与謝野町は実は akiya-athome.jp プラットフォーム委託と判明 → AkiyaAthomeBaseScraper に subclass 追加のみ (与謝野は subdomain 未発見で見送り)。AkiyaAthomeBaseScraper.list_url は area_path 空なら `/buy/house/list` にフォールバックする形に拡張 (自治体専用サブドメイン用)。
+- 2026-05-27 (セッション2): 独自 scraper 5本を追加。koka_iju (甲賀市 24件, WordPress VK Blocks), uda_akiyabank (宇陀市 31件, article.akiyainfo, 7ページネーション), ohdai_awa (大台町 28件, AWA サポートデスク委託 desk.awapj.com, t_code listing_id, 4ページ), nancla (南丹市 57件, WordPress bukken_entry, 8ページ), classo_tambasasayama (丹波篠山市 12件, classo.jp box.relative, ※サイト側 paginationが broken のため 1ページのみ取得)。
+- 2026-05-27 (セッション2): 米原市は空き家バンクが公開されておらず (相談ベース運用)、与謝野町は akiya-athome subdomain 探索失敗のため両方見送り。総自治体数 14 → 21、scraper 数 16 → 21。

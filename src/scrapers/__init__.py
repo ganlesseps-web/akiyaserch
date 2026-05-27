@@ -9,6 +9,9 @@ from .akiya_athome import (
     YabuAkiyabankScraper,
     FukuchiyamaAkiyabankScraper,
     MimasakaAkiyabankScraper,
+    AyabeAkiyabankScraper,
+    NishiawakuraAkiyabankScraper,
+    NagiAkiyabankScraper,
 )
 from .kyotango_akiya import KyotangoAkiyaScraper
 from .nabari_akiyabank import NabariAkiyabankScraper
@@ -17,6 +20,11 @@ from .gojo_akiyabank import GojoAkiyabankScraper
 from .shimoichi_akiyabank import ShimoichiAkiyabankScraper
 from .wakayama_life import WakayamaLifeScraper
 from .yabu_indep import YabuIndepScraper
+from .koka_iju import KokaIjuScraper
+from .uda_akiyabank import UdaAkiyabankScraper
+from .ohdai_awa import OhdaiAwaScraper
+from .nancla import NanclaScraper
+from .classo_tambasasayama import ClassoTambasasayamaScraper
 
 REGISTRY: dict[str, type[Scraper]] = {
     "minna_0en": MinnaZeroEnScraper,
@@ -28,6 +36,9 @@ REGISTRY: dict[str, type[Scraper]] = {
     "yabu_akiyabank": YabuAkiyabankScraper,
     "fukuchiyama_akiyabank": FukuchiyamaAkiyabankScraper,
     "mimasaka_akiyabank": MimasakaAkiyabankScraper,
+    "ayabe_akiyabank": AyabeAkiyabankScraper,
+    "nishiawakura_akiyabank": NishiawakuraAkiyabankScraper,
+    "nagi_akiyabank": NagiAkiyabankScraper,
     "kyotango_akiya": KyotangoAkiyaScraper,
     "nabari_akiyabank": NabariAkiyabankScraper,
     "takashima_akiya": TakashimaAkiyaScraper,
@@ -35,4 +46,9 @@ REGISTRY: dict[str, type[Scraper]] = {
     "shimoichi_akiyabank": ShimoichiAkiyabankScraper,
     "wakayama_life": WakayamaLifeScraper,
     "yabu_indep": YabuIndepScraper,
+    "koka_iju": KokaIjuScraper,
+    "uda_akiyabank": UdaAkiyabankScraper,
+    "ohdai_awa": OhdaiAwaScraper,
+    "nancla": NanclaScraper,
+    "classo_tambasasayama": ClassoTambasasayamaScraper,
 }
