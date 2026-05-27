@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-補助金充実の関西圏自治体 8件を追加実装 (2026-05-27 セッション2)。前回の14自治体に加えて: 綾部2/西粟倉1/奈義6 (akiya-athome 既存ベース流用) + 甲賀24/宇陀31/大台28/南丹57/丹波篠山12 (独自 scraper) = +161件。与謝野町・米原市は空き家バンク URL 未公開のため見送り。AkiyaAthomeBaseScraper を改良し、area_path 空でも `/buy/house/list` で取得可能に (自治体専用サブドメイン用)。現在 21自治体 scraper、Discord 通知は GitHub Actions の次回 cron で反映予定。
+補助金充実の関西圏自治体 8件を追加実装 (2026-05-27 セッション2)。前回の14自治体に加えて: 綾部2/西粟倉1/奈義6 (akiya-athome 既存ベース流用) + 甲賀24/宇陀31/大台28/南丹57/丹波篠山12 (独自 scraper) = +161件。与謝野町・米原市は空き家バンク URL 未公開のため見送り。AkiyaAthomeBaseScraper を改良し、area_path 空でも `/buy/house/list` で取得可能に (自治体専用サブドメイン用)。現在 21自治体 scraper。本番 GHA scrape 実行で new=164件 Turso 投入、続けて notify trigger で `scanned=573 passed=59 sent=59` → Discord に新着59件のダイジェスト送信完了。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
