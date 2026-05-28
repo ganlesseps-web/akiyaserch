@@ -17,9 +17,11 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # 13 自治体追加で yabu_indep の詳細 fetch (~50s) など増えたため 10 分に。
-    # 通常は 5-7 分で完了、超えた場合の保険値。
-    timeout-minutes: 10
+    # 27 source / 4自治体 詳細fetch型 (yabu_indep ~50s + higashiyoshino ~50s +
+    # totsukawa ~30s + ieichiba ~30s) で 8-9 分かかる。15 分に余裕を持つ。
+    # private repo の Actions 枠 (2000分/月) は実消費時間 × cron 回数で決まる
+    # (timeout 値は上限なので消費に影響しない)。
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
