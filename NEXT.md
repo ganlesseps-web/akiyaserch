@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。scrape timeout 10→15分に拡張 (詳細fetch型 yabu_indep/higashiyoshino/totsukawa/ieichiba で計~3分かかる)。本番 GHA 完了: scrape 10:27、notify は `scanned=582 passed=34 sent=34` で Discord に新着34件のダイジェスト送信完了。
+さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。scrape timeout 10→15分に拡張 (詳細fetch型 yabu_indep/higashiyoshino/totsukawa/ieichiba で計~3分かかる)。本番 GHA 完了: scrape 10:27、notify は `scanned=582 passed=34 sent=34` で Discord に新着34件のダイジェスト送信完了。次セッション (2026-05-28 セッション4) は山梨/高知/山口 を allowlist に追加 + 6自治体 (北杜/橋本/神山/三好/本山/美祢) の scraper 追加に着手中、現在 偵察 agent 並列実行中。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
