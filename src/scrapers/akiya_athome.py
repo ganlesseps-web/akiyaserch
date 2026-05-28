@@ -339,3 +339,48 @@ class ShisoAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "shiso-c28227"
     area_path = ""
     prefecture = "兵庫県"
+
+
+class MiyoshiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """徳島県三好市 (miyoshi-c36208.akiya-athome.jp).
+    祖谷渓・大歩危、四国の山間、移住補助あり。"""
+    source = "miyoshi_akiyabank"
+    subdomain = "miyoshi-c36208"
+    area_path = ""
+    prefecture = "徳島県"
+
+
+class MotoyamaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """高知県本山町 (motoyama-t39341.akiya-athome.jp).
+    嶺北・ゆず、移住補助多数。現在登録 0 件だが将来用。"""
+    source = "motoyama_akiyabank"
+    subdomain = "motoyama-t39341"
+    area_path = ""
+    prefecture = "高知県"
+
+
+class MineAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """山口県美祢市 (mine-c35213.akiya-athome.jp).
+    秋吉台、内陸、補助金あり。"""
+    source = "mine_akiyabank"
+    subdomain = "mine-c35213"
+    area_path = ""
+    prefecture = "山口県"
+
+
+class HokutoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """山梨県北杜市 (hokuto-c19209.akiya-athome.jp).
+    八ヶ岳移住メッカ、改修補助手厚い。"""
+    source = "hokuto_akiyabank"
+    subdomain = "hokuto-c19209"
+    area_path = ""
+    prefecture = "山梨県"
+
+
+class HashimotoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """和歌山県橋本市 (hashimoto-c30203.akiya-athome.jp).
+    大阪通勤圏、高野山麓、内陸。"""
+    source = "hashimoto_akiyabank"
+    subdomain = "hashimoto-c30203"
+    area_path = ""
+    prefecture = "和歌山県"

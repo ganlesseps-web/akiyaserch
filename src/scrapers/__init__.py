@@ -16,6 +16,11 @@ from .akiya_athome import (
     MaizuruAkiyabankScraper,
     MatsusakaAkiyabankScraper,
     ShisoAkiyabankScraper,
+    MiyoshiAkiyabankScraper,
+    MotoyamaAkiyabankScraper,
+    MineAkiyabankScraper,
+    HokutoAkiyabankScraper,
+    HashimotoAkiyabankScraper,
 )
 from .kyotango_akiya import KyotangoAkiyaScraper
 from .nabari_akiyabank import NabariAkiyabankScraper
@@ -49,6 +54,11 @@ REGISTRY: dict[str, type[Scraper]] = {
     "maizuru_akiyabank": MaizuruAkiyabankScraper,
     "matsusaka_akiyabank": MatsusakaAkiyabankScraper,
     "shiso_akiyabank": ShisoAkiyabankScraper,
+    "miyoshi_akiyabank": MiyoshiAkiyabankScraper,
+    "motoyama_akiyabank": MotoyamaAkiyabankScraper,
+    "mine_akiyabank": MineAkiyabankScraper,
+    "hokuto_akiyabank": HokutoAkiyabankScraper,
+    "hashimoto_akiyabank": HashimotoAkiyabankScraper,
     "kyotango_akiya": KyotangoAkiyaScraper,
     "nabari_akiyabank": NabariAkiyabankScraper,
     "takashima_akiya": TakashimaAkiyaScraper,
