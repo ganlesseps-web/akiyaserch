@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-補助金充実の関西圏自治体 8件を追加実装 (2026-05-27 セッション2)。前回の14自治体に加えて: 綾部2/西粟倉1/奈義6 (akiya-athome 既存ベース流用) + 甲賀24/宇陀31/大台28/南丹57/丹波篠山12 (独自 scraper) = +161件。与謝野町・米原市は空き家バンク URL 未公開のため見送り。AkiyaAthomeBaseScraper を改良し、area_path 空でも `/buy/house/list` で取得可能に (自治体専用サブドメイン用)。現在 21自治体 scraper。本番 GHA scrape 実行で new=164件 Turso 投入、続けて notify trigger で `scanned=573 passed=59 sent=59` → Discord に新着59件のダイジェスト送信完了。
+さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。scrape timeout 10→15分に拡張 (詳細fetch型 yabu_indep/higashiyoshino/totsukawa/ieichiba で計~3分かかる)。本番 GHA 完了: scrape 10:27、notify は `scanned=582 passed=34 sent=34` で Discord に新着34件のダイジェスト送信完了。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -23,9 +23,13 @@
 - [x] `src/scrapers/iga_akiyabank.py`: 三重県伊賀市公式空き家バンク (2026-05-26 完了、18件取得)
 - [x] 自治体scraper 13本追加 (2026-05-27 完了): 神河/多可/たつの/養父独立/京丹後/福知山/名張/高島/五條/下市/わかやまLIFE/美作 + akiya-athome 汎用ベース
 - [x] 補助金充実 8自治体追加 (2026-05-27 セッション2 完了): 綾部/西粟倉/奈義/甲賀/宇陀/大台/南丹/丹波篠山
+- [x] 補助金充実 6自治体追加 + 定住条件検出 (2026-05-28 セッション3 完了): 朝来/舞鶴/松阪/宍粟/東吉野/十津川 + 🎯 バッジ
+- [ ] (任意) 三重県 熊野市 (Jimdo CMS, kumanoijunet.jimdofree.com) — URLが日本語パス + 構造が深く、独自実装に~1時間
+- [ ] (任意) 岡山県 真庭市 (cocomaniwa.com) — 物件 一覧の HTML 構造未把握、JS依存の可能性。要再調査
 - [ ] (任意) 与謝野町の akiya-athome subdomain or 一覧 URL 発見 → scraper 追加
 - [ ] (任意) 米原市の空き家バンク (現在公開バンク無し、市役所相談ベース運用らしい)。公開された時点で追加検討
 - [ ] (任意) classo (丹波篠山) のページネーション。サイト側で page/2/ も page/1/ と同じ12件返してくる挙動。総13ページあるはずなのでURL pattern を再調査
+- [ ] (任意) ダッシュボードに「🎯 定住条件付き」フィルタタブを追加 (現状 Discord 通知でしか可視化されていない)
 - [ ] (任意) iga_akiyabank で詳細ページから area_land / area_building 取得 (現状は list 1リクのみ)
 - [ ] (任意) 福知山市が物件追加されたとき自動取得可 (現状 0 件で scraper 待機)
 - [ ] (任意) わかやまLIFE のフィルタ URL を再調査 (akiya_area パラメータが効かないため全和歌山県取得→住所で絞り込み中)。古座川/有田川が登録された時に動くが、和歌山県他自治体の物件も増えたら住所filter は重くなる
@@ -90,3 +94,8 @@
 - 2026-05-27 (セッション2): ユーザー要望「補助金充実+住みやすい自治体を追加」に対応。Web 調査で関西圏 14候補 (★1-3) を発掘、★★★ 10件を実装範囲に。うち綾部市/西粟倉村/奈義町/与謝野町は実は akiya-athome.jp プラットフォーム委託と判明 → AkiyaAthomeBaseScraper に subclass 追加のみ (与謝野は subdomain 未発見で見送り)。AkiyaAthomeBaseScraper.list_url は area_path 空なら `/buy/house/list` にフォールバックする形に拡張 (自治体専用サブドメイン用)。
 - 2026-05-27 (セッション2): 独自 scraper 5本を追加。koka_iju (甲賀市 24件, WordPress VK Blocks), uda_akiyabank (宇陀市 31件, article.akiyainfo, 7ページネーション), ohdai_awa (大台町 28件, AWA サポートデスク委託 desk.awapj.com, t_code listing_id, 4ページ), nancla (南丹市 57件, WordPress bukken_entry, 8ページ), classo_tambasasayama (丹波篠山市 12件, classo.jp box.relative, ※サイト側 paginationが broken のため 1ページのみ取得)。
 - 2026-05-27 (セッション2): 米原市は空き家バンクが公開されておらず (相談ベース運用)、与謝野町は akiya-athome subdomain 探索失敗のため両方見送り。総自治体数 14 → 21、scraper 数 16 → 21。
+- 2026-05-28 (セッション3): ユーザー要望「住みやすい + 補助金あり自治体」+「何年か住めばもらえる家」の2軸対応。Web 調査 agent で関西圏 補助金充実 8自治体を候補化、ユーザー選択で 8自治体全部実装方針 (★★★ 朝来/舞鶴/熊野/松阪 + ★★ 宍粟/東吉野/十津川/真庭)。並列偵察の結果、朝来/舞鶴/松阪/宍粟は akiya-athome 系で AkiyaAthomeBaseScraper のサブクラス追加だけで完了。
+- 2026-05-28 (セッション3): 東吉野村 (vill.higashiyoshino.nara.jp) は WordPress + 詳細fetch型、十津川村 (vill.totsukawa.lg.jp) は PHP CMS + 詳細fetch型として独自実装。熊野市 (Jimdo, 日本語URL) と真庭市 (cocomaniwa.com, articles 0件で構造未把握) は構造調査に追加時間必要 → 次セッション送り。
+- 2026-05-28 (セッション3): 「定住条件付き譲渡」検出機能を実装。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/お試し移住/賃貸後譲渡/改修費返済不要/○年定住で…/譲渡可」等のキーワードを検出 (確実シグナル 18個 + 文脈ベース判定)。DB に settlement_offer (INT) と settlement_offer_reason (TEXT) 列を追加。Discord embed の title に 🎯 prefix + 「🎯 もらえる/譲渡条件あり」フィールドで検出語を表示。ダッシュボード側のフィルタタブは未実装 (次セッション)。
+- 2026-05-28 (セッション3): GHA scrape の timeout を 10→15 分に拡張。27 source + 詳細fetch型 4本 (yabu_indep ~50s + higashiyoshino ~50s + totsukawa ~30s + ieichiba ~30s) で計 8-10 分かかるため。timeout は上限値で実消費時間 (10分27秒) は実 Actions 枠を圧迫しない。
+- 2026-05-28 (セッション3): 本番反映完了。GHA scrape 27 source 全動作 (raw 670件、当セッションの新規分は前回 cancel された run で既に投入済みのため new=0/全 updated 表示)、notify trigger で `scanned=582 passed=34 sent=34` → Discord に 34件のダイジェスト送信成功。総自治体数 21 → 27、scraper 数 21 → 27。
