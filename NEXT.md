@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。scrape timeout 10→15分に拡張 (詳細fetch型 yabu_indep/higashiyoshino/totsukawa/ieichiba で計~3分かかる)。本番 GHA 完了: scrape 10:27、notify は `scanned=582 passed=34 sent=34` で Discord に新着34件のダイジェスト送信完了。次セッション (2026-05-28 セッション4) は山梨/高知/山口 を allowlist に追加 + 6自治体 (北杜/橋本/神山/三好/本山/美祢) の scraper 追加に着手中、現在 偵察 agent 並列実行中。
+さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。セッション4 (2026-05-28): 「空き家率高い県 (山梨/和歌山/徳島/高知/山口) で内陸・補助金あり」要望に対応。filter allowlist に山梨/高知/山口 を追加、5自治体 scraper 追加 (北杜/橋本/三好/本山/美祢、全 akiya-athome 系 = サブクラス追加だけで対応)。神山町は専用バンク無し (全国版に登録のみ) で見送り。実物件は三好25 + 美祢49 = +74件、他3自治体 (北杜/橋本/本山) は現在 0 件だが scraper は登録済 (将来追加時に自動取得)。総自治体数 27→32。GHA scrape trigger 済、結果待機中。
 
 ## Next (Mac)
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
@@ -24,6 +24,9 @@
 - [x] 自治体scraper 13本追加 (2026-05-27 完了): 神河/多可/たつの/養父独立/京丹後/福知山/名張/高島/五條/下市/わかやまLIFE/美作 + akiya-athome 汎用ベース
 - [x] 補助金充実 8自治体追加 (2026-05-27 セッション2 完了): 綾部/西粟倉/奈義/甲賀/宇陀/大台/南丹/丹波篠山
 - [x] 補助金充実 6自治体追加 + 定住条件検出 (2026-05-28 セッション3 完了): 朝来/舞鶴/松阪/宍粟/東吉野/十津川 + 🎯 バッジ
+- [x] 空き家率高い5県カバー (2026-05-28 セッション4 完了): allowlist 拡張 + 北杜/橋本/三好/本山/美祢 scraper
+- [ ] (任意) 北杜市・橋本市・本山町は現在 0 件。空き家バンクに物件登録される時点で自動取得される
+- [ ] (任意) 神山町 (徳島・IT移住メッカ) は専用バンク無しのため別データソース要検討
 - [ ] (任意) 三重県 熊野市 (Jimdo CMS, kumanoijunet.jimdofree.com) — URLが日本語パス + 構造が深く、独自実装に~1時間
 - [ ] (任意) 岡山県 真庭市 (cocomaniwa.com) — 物件 一覧の HTML 構造未把握、JS依存の可能性。要再調査
 - [ ] (任意) 与謝野町の akiya-athome subdomain or 一覧 URL 発見 → scraper 追加
@@ -99,3 +102,6 @@
 - 2026-05-28 (セッション3): 「定住条件付き譲渡」検出機能を実装。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/お試し移住/賃貸後譲渡/改修費返済不要/○年定住で…/譲渡可」等のキーワードを検出 (確実シグナル 18個 + 文脈ベース判定)。DB に settlement_offer (INT) と settlement_offer_reason (TEXT) 列を追加。Discord embed の title に 🎯 prefix + 「🎯 もらえる/譲渡条件あり」フィールドで検出語を表示。ダッシュボード側のフィルタタブは未実装 (次セッション)。
 - 2026-05-28 (セッション3): GHA scrape の timeout を 10→15 分に拡張。27 source + 詳細fetch型 4本 (yabu_indep ~50s + higashiyoshino ~50s + totsukawa ~30s + ieichiba ~30s) で計 8-10 分かかるため。timeout は上限値で実消費時間 (10分27秒) は実 Actions 枠を圧迫しない。
 - 2026-05-28 (セッション3): 本番反映完了。GHA scrape 27 source 全動作 (raw 670件、当セッションの新規分は前回 cancel された run で既に投入済みのため new=0/全 updated 表示)、notify trigger で `scanned=582 passed=34 sent=34` → Discord に 34件のダイジェスト送信成功。総自治体数 21 → 27、scraper 数 21 → 27。
+- 2026-05-28 (セッション4): 「空き家率高い 山梨/和歌山/徳島/高知/山口 で内陸・補助金あり・住みやすい自治体」要望に対応。知識ベース + Web偵察で候補 14自治体を提示、ユーザー選択で ★★★ 6自治体実装方針 (北杜/橋本/神山/三好/本山/美祢)。並列偵察結果: 5自治体 (北杜/橋本/三好/本山/美祢) は全て akiya-athome 系 → AkiyaAthomeBaseScraper サブクラス追加で対応、神山町は専用バンク無し (全国版 akiya-athome に登録のみ、独立サブドメイン無し) で見送り。
+- 2026-05-28 (セッション4): filter.yaml の prefectures allowlist に 山梨県/高知県/山口県 を追加 (大阪駅2時間圏外だが移住目的で取得対象)。borderline_prefectures には入れず Distance Matrix での距離判定をスキップ。
+- 2026-05-28 (セッション4): 実物件取得は三好25 + 美祢49 = +74件。北杜/橋本/本山は現在 0件だがサイト自体は稼働中で、将来物件登録時に自動取得される。総自治体数 27 → 32、scraper 数 27 → 32。
