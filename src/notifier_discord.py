@@ -143,6 +143,16 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
         fields.append({"name": "📐 土地", "value": f"{row['area_land']:.0f}㎡", "inline": True})
     if row["area_building"]:
         fields.append({"name": "🏠 建物", "value": f"{row['area_building']:.0f}㎡", "inline": True})
+    # 定住条件付き譲渡 / 試住制度 などのバッジ表示
+    settlement_offer = _safe_get(row, "settlement_offer") or 0
+    if settlement_offer:
+        reason = _safe_get(row, "settlement_offer_reason") or "条件付譲渡の可能性"
+        fields.append({
+            "name": "🎯 もらえる/譲渡条件あり",
+            "value": f"検出語: **{reason}** — 詳細ページで条件を要確認",
+            "inline": False,
+        })
+
     # AI スコア (LEFT JOIN ai_scores が無い場合は None)
     ai_score = _safe_get(row, "ai_score")
     if ai_score is not None:
@@ -154,8 +164,11 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
             "inline": False,
         })
 
+    title_text = (row["title"] or "(タイトルなし)")[:240]
+    if settlement_offer:
+        title_text = f"🎯 {title_text}"
     embed = {
-        "title": (row["title"] or "(タイトルなし)")[:250],
+        "title": title_text[:250],
         "url": row["url"],
         "color": EMBED_COLOR,
         "description": description[:4000],

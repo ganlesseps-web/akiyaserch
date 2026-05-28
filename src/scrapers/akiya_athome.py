@@ -305,3 +305,37 @@ class NagiAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "nagi-t33623"
     area_path = ""
     prefecture = "岡山県"
+
+
+class AsagoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県朝来市 (asago-c28225.akiya-athome.jp).
+    現在は売戸建 0 件だが、改修補助多数で将来追加が期待される。"""
+    source = "asago_akiyabank"
+    subdomain = "asago-c28225"
+    area_path = ""
+    prefecture = "兵庫県"
+
+
+class MaizuruAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """京都府舞鶴市 (maizuru-c26202.akiya-athome.jp)."""
+    source = "maizuru_akiyabank"
+    subdomain = "maizuru-c26202"
+    area_path = ""
+    prefecture = "京都府"
+
+
+class MatsusakaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """三重県松阪市 (matsusaka-c24204.akiya-athome.jp)."""
+    source = "matsusaka_akiyabank"
+    subdomain = "matsusaka-c24204"
+    area_path = ""
+    prefecture = "三重県"
+
+
+class ShisoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県宍粟市 (shiso-c28227.akiya-athome.jp).
+    林業の町、改修補助上限130万・子育て移住支援強化中。"""
+    source = "shiso_akiyabank"
+    subdomain = "shiso-c28227"
+    area_path = ""
+    prefecture = "兵庫県"

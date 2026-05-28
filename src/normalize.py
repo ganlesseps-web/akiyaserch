@@ -48,6 +48,7 @@ def normalize(raw: RawListing) -> Listing:
     # 無ければ title+body からキーワード分類にフォールバック。
     property_type = raw.property_type_hint or classify_property_type(raw.title, raw.body)
     is_bad, reason = is_dilapidated(raw.title, raw.body)
+    has_settlement, settlement_reason = detect_settlement_offer(raw.title, raw.body)
 
     return Listing(
         source=raw.source,
@@ -66,6 +67,8 @@ def normalize(raw: RawListing) -> Listing:
         property_type=property_type,
         dilapidated=1 if is_bad else 0,
         dilapidation_reason=reason or None,
+        settlement_offer=1 if has_settlement else 0,
+        settlement_offer_reason=settlement_reason or None,
     )
 
 
@@ -240,3 +243,42 @@ def _parse_area(text: str | None) -> float | None:
         return None
     m = _NUM_RE.search(text.replace(",", ""))
     return float(m.group(0)) if m else None
+
+
+def detect_settlement_offer(title: str | None, body: str | None) -> tuple[bool, str]:
+    """「定住条件付き譲渡」「試住制度」「改修費返済不要」等を検出.
+
+    検出対象パターン:
+    - 「○年定住で譲渡/所有権移転」型 (北海道沼田町・島根津和野などで実例)
+    - 「試住制度」「お試し移住」型 (神河町・養父市・伊根町など)
+    - 「改修費自治体負担・○年定住で返済不要」型 (与謝野町・朝来市など)
+    - 「無償譲渡」「無料譲渡」「贈与」型
+    - 「賃貸後譲渡」「リース後購入」型
+
+    Returns (True, "ヒットした語句") or (False, "")
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return False, ""
+
+    # 確実なシグナル
+    SIGNALS = (
+        "無償譲渡", "無料譲渡", "ゼロ円譲渡", "0円譲渡",
+        "無償でお譲り", "無料でお譲り",
+        "定住条件付", "定住要件付", "定住条件を満たせば",
+        "定住で譲渡", "定住で所有権", "居住で譲渡",
+        "試住制度", "お試し移住", "お試し居住", "お試し滞在", "お試し住宅",
+        "賃貸後譲渡", "賃貸期間後譲渡", "リース後譲渡", "賃貸後購入",
+        "改修費 返済不要", "改修費返済不要", "返済免除",
+        "○年定住", "年定住で", "年定住すれば",
+        "贈与可", "譲渡可",  # ※「譲渡」単独はノイズ多いので「譲渡可」のみ
+    )
+    for kw in SIGNALS:
+        if kw in text:
+            return True, kw
+
+    # 価格コンテキスト: "賃料 ○円 → 譲渡可" のようなパターン
+    if "譲渡" in text and ("年後" in text or "年間" in text or "後に" in text):
+        return True, "譲渡(条件付)"
+
+    return False, ""
