@@ -1,6 +1,9 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
+セッション5 (2026-05-30): 「9府県の全市区町村の空き家バンク取得」要望に対応。海沿い市町村 blacklist 機能を実装 (filter.py + filters.yaml + tests)。和歌山県南紀沿岸 8自治体 + 三重県南伊勢〜熊野沿岸 7自治体 + 京都伊根町 + 大阪岬町 + 山口長門市 を default で blacklist。akiya-athome 全国版検索 API (`/bukken/search/list/?pref_cd=XX`) は現在メンテ中で HTTP 500、復旧後に scraper 実装予定。LIFULL HOME's は CloudFront WAF で 403 + 商用サイト規約懸念で見送り。本日 GHA scrape は前回 1回 Turso 502 で失敗、次回 cron で自動回復 (一過性)。
+
+## Now (旧)
 さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。セッション4 (2026-05-28): 「空き家率高い県 (山梨/和歌山/徳島/高知/山口) で内陸・補助金あり」要望に対応。filter allowlist に山梨/高知/山口 を追加、5自治体 scraper 追加 (北杜/橋本/三好/本山/美祢、全 akiya-athome 系 = サブクラス追加だけで対応)。神山町は専用バンク無し (全国版に登録のみ) で見送り。実物件は三好25 + 美祢49 = +74件、他3自治体 (北杜/橋本/本山) は現在 0 件だが scraper は登録済 (将来追加時に自動取得)。総自治体数 27→32。本番反映完了: GHA scrape 12分・三好25+美祢49=新規74件投入、notify は `scanned=629 passed=49 sent=49` で Discord に49件のダイジェスト送信成功。
 
 ## Next (Mac)
@@ -106,3 +109,5 @@
 - 2026-05-28 (セッション4): filter.yaml の prefectures allowlist に 山梨県/高知県/山口県 を追加 (大阪駅2時間圏外だが移住目的で取得対象)。borderline_prefectures には入れず Distance Matrix での距離判定をスキップ。
 - 2026-05-28 (セッション4): 実物件取得は三好25 + 美祢49 = +74件。北杜/橋本/本山は現在 0件だがサイト自体は稼働中で、将来物件登録時に自動取得される。総自治体数 27 → 32、scraper 数 27 → 32。
 - 2026-05-28 (セッション4): 本番反映完了。GHA scrape 32 source 全動作 (raw 909件、new 75件 = 三好25+美祢49+ieichiba 1件)、notify trigger で `scanned=629 passed=49 sent=49` → Discord に49件のダイジェスト送信成功。これで関西圏+空き家率高い5県の自治体公式空き家バンクをほぼ網羅。
+- 2026-05-30 (セッション5): ユーザー要望「9府県の全市区町村空き家バンク取得 (海沿い・シロアリリスク除外)」に対応。①海沿い市町村 blacklist 機能を実装 (filter.FilterConfig に city_blacklist、filter.passes で city 単位除外、tests 2件追加)、filters.yaml に default で和歌山県南紀沿岸 8 + 三重県南伊勢〜熊野沿岸 7 + 京都伊根町 + 大阪岬町 + 山口長門市 を設定。②akiya-athome 全国版検索 API は本日メンテ中 (HTTP 500、トップは復旧)、復旧後に scraper 実装予定。③LIFULL HOME's は CloudFront WAF で 403、商用サイト規約懸念で見送り。Turso 502 一過性エラーは次回 cron で自動回復確認 (放置方針)。
+- 2026-05-30 (セッション5): city_blacklist の選定方針 = 「市の大半が海沿いで内陸エリアがほとんどない小自治体」のみ。京丹後/舞鶴/与謝野/古座川/田辺/新宮/萩/下関などはユーザー指定または内陸エリア豊富のため blacklist 対象外、ng_keywords (オーシャンビュー等) と is_dilapidated で個別判定。

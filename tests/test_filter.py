@@ -20,7 +20,7 @@ def cfg():
     return flt.FilterConfig(
         price_max=3_000_000,
         price_min=0,
-        prefectures={"大阪府", "兵庫県", "京都府"},
+        prefectures={"大阪府", "兵庫県", "京都府", "和歌山県"},
         borderline_prefectures={"岡山県"},
         drive_origin="大阪駅",
         drive_max_seconds=7200,
@@ -28,6 +28,7 @@ def cfg():
         min_ai_score=0,
         property_types=set(),  # 空 set = 全タイプ許可
         exclude_dilapidated=False,
+        city_blacklist=set(),
     )
 
 
@@ -73,3 +74,21 @@ def test_prefecture_unknown_blocks(conn, cfg):
     row = _insert(conn, prefecture=None)
     ok, reason = flt.passes(conn, row, cfg)
     assert not ok and "unknown" in reason
+
+
+def test_city_blacklist_blocks(conn, cfg):
+    """blacklist 市町村は丸ごと除外される (海沿いリスク自治体用)."""
+    import dataclasses
+    cfg_with_blacklist = dataclasses.replace(cfg, city_blacklist={"太地町", "串本町"})
+    row = _insert(conn, prefecture="和歌山県", city="太地町", address="和歌山県東牟婁郡太地町")
+    ok, reason = flt.passes(conn, row, cfg_with_blacklist)
+    assert not ok and "blacklist" in reason
+
+
+def test_city_blacklist_allows_non_listed(conn, cfg):
+    """blacklist 外の市町村は通る."""
+    import dataclasses
+    cfg_with_blacklist = dataclasses.replace(cfg, city_blacklist={"太地町"})
+    row = _insert(conn, prefecture="大阪府", city="大阪市", address="大阪府大阪市北区")
+    ok, _ = flt.passes(conn, row, cfg_with_blacklist)
+    assert ok

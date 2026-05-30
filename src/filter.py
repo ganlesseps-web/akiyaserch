@@ -25,6 +25,7 @@ class FilterConfig:
     min_ai_score: int  # 0 なら AI スコア無視。>0 なら scored & score >= min_ai_score を要求。
     property_types: set[str]  # 通す物件タイプ. 空 set なら全許可。
     exclude_dilapidated: bool  # True なら is_dilapidated 判定された物件を通知対象から除外
+    city_blacklist: set[str]  # 海沿い等で家が傷みやすい市町村を丸ごと除外 (例: 太地町)
 
     @classmethod
     def load(cls, path: Path | None = None) -> "FilterConfig":
@@ -52,6 +53,7 @@ class FilterConfig:
             min_ai_score=min_ai_score,
             property_types=set(data.get("property_types") or []),
             exclude_dilapidated=bool(data.get("exclude_dilapidated", False)),
+            city_blacklist=set(data.get("city_blacklist") or []),
         )
 
 
@@ -102,6 +104,12 @@ def passes(
 
     if pref not in cfg.prefectures:
         return False, f"prefecture {pref} not in allowlist"
+
+    # 市町村 blacklist (海沿いで家が傷むリスクが高い等で丸ごと除外したい自治体)
+    if cfg.city_blacklist:
+        city = row["city"]
+        if city and city in cfg.city_blacklist:
+            return False, f"city {city} in blacklist"
 
     # 境界府県は Distance Matrix で詰める（任意・キー設定時のみ）
     if use_distance_matrix and pref in cfg.borderline_prefectures and row["address"]:
