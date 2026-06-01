@@ -78,7 +78,7 @@
 - 2026-05-26: 本番デプロイ完了。Turso DB (aws-ap-northeast-1) 作成、Vercel akiyaserch project に env vars 4個 + SSO protection 無効化、https://akiyaserch.vercel.app/ で Basic 認証付きダッシュボード公開。
 - 2026-05-26: libsql-client (Python 0.3.1) は libsql:// (WebSocket) URL で 400 エラー。Turso の Hrana HTTP API (https://) を使うことで解決。GitHub Secret と Vercel env var どちらも https:// 形式で登録。
 - 2026-05-26: vercel.json の legacy `builds` + `rewrites` 構文で routing が破綻 (404)。新構文 (`rewrites` のみ、`api/*.py` 自動検出) に切替えてデプロイ成功。
-- 2026-05-26: 認証情報 admin / Qo-H1qXJO4RlZK-sMFzDr4UnOk0V8j4f は会話チャット内に平文残存。ユーザー側でパスワードマネージャに保存済みなら revoke/再生成は任意。
+- 2026-05-26: ダッシュボードの Basic 認証情報 (admin / パスワードは伏せ字化済み) はパスワードマネージャに保存推奨。※2026-06-01 セッション6で公開リポ化に伴い、平文パスワードを NEXT.md から redact (過去履歴には残るため Vercel 側でパスワード rotate 推奨、詳細は同日 Recent decisions 参照)。
 - 2026-05-26: 家いちばスクレイパは公式 JSON API `/api/properties?orderby=price_asc&page=N` を採用。HTML パースより速い・正確・サイト負荷小。1リクエスト10件、500件総数、20ページ MAX_PAGES + SCRAPE_PRICE_CEILING (500万) で早期 break。
 - 2026-05-26: 家いちば初回スクレイプで関西圏 24件が price ≤ 300万でヒット → Discord に digest 2分割で送信成功。神戸90万円農地、京都伊根町80万円、兵庫赤穂35万円山林、大阪大東270万円戸建てなど良物件多数。
 - 2026-05-26: B (通知強化) 実装。Discord Embed の thumbnail → image (大画像)、description にクイックリンク [🗺️地図] [👀街並み] [⚠️ハザード] を追加、価格を "1,000万円" 形式に整形、AI スコアフィールドも対応。
@@ -116,3 +116,4 @@
 - 2026-05-30 (セッション5): city_blacklist の選定方針 = 「市の大半が海沿いで内陸エリアがほとんどない小自治体」のみ。京丹後/舞鶴/与謝野/古座川/田辺/新宮/萩/下関などはユーザー指定または内陸エリア豊富のため blacklist 対象外、ng_keywords (オーシャンビュー等) と is_dilapidated で個別判定。
 - 2026-06-01 (セッション6): システム調査で「既に完全クラウド24時間稼働・Mac不要」を確認。GHA scrape は GitHub サーバーの schedule トリガーで動作 (直近 runner は全て schedule/main)、ローカルに .env / launchd / playwright 依存なし。コード全文走査で Discord webhook / Turso token / パスワードのハードコード無し (全て GitHub Secrets / Vercel env var 経由)、git 履歴にも秘密ファイル未コミット → public 化しても安全と確認。
 - 2026-06-01 (セッション6): GitHub Actions 無料枠 (private repo 月2000分) 対策。観測値で scrape 30分間隔は GitHub のスケジュール throttle で実際 ~11回/日だが、それでも月 ~3000-4000分で枠超過リスク (今月6/1リセット直後なので今は動作中だが月後半で停止の恐れ)。ユーザー判断で頻度を1日1回に削減: scrape `0 21 * * *` (06:00 JST)、notify `30 21` + `0 9` (06:30 + 18:00 JST 保険2回)。月 ~360分 = 枠の18%。空き家バンクは良物件でも数日残るため1日1回で取りこぼしほぼ無し。完全無料24時間を確定。手動即時実行は Actions タブの workflow_dispatch。
+- 2026-06-01 (セッション6 続き): リポ公開化の前検査。全 git 履歴を走査し、Discord webhook URL / Turso トークンはコミットされていない (変数名と .example プレースホルダのみ) ことを確認 ✅。唯一 NEXT.md にダッシュボードの Basic 認証パスワードが平文で残っていた (現行 + 過去 commit 49601e8/0592e3a) ため、現行 NEXT.md は redact 済。過去履歴には残るため、公開前に Vercel の DASHBOARD_PASSWORD を rotate する方針 (ユーザー選択「先にパスワード変更してから公開」)。深刻度は低 (ダッシュボードは公開情報の物件一覧 + ★評価のみ、金銭/個人情報/アカウント乗っ取り無し) だが本筋対応として rotate。rotate 完了後にリポを public 化予定。集めている空き家情報自体は全て公開情報、scraped データは Turso 側で repo には入らない。
