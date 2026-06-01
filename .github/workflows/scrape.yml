@@ -2,12 +2,13 @@ name: scrape
 
 on:
   schedule:
-    # 30 分間隔。
-    # ・private repo の GitHub Actions 無料枠は 2000 分/月。
-    #   15 分間隔だと枠超過リスクがあるため 30 分に。
-    # ・notify が毎時00分にまとめるため、scrape 頻度 15→30 は実害なし。
+    # 1 日 1 回。21:00 UTC = 06:00 JST (毎朝)。
+    # ・private repo の GitHub Actions 無料枠は 2000 分/月。1回 ~11分なので
+    #   1日1回 = 月 ~330分 と大余裕 (30分間隔だと月 ~3600分で枠超過していた)。
+    # ・空き家バンクは良物件でも数日は残るため、1日1回で取りこぼしほぼ無し。
     # ・cron は UTC 基準、高負荷時 5〜15 分の遅延あり。
-    - cron: '*/30 * * * *'
+    # ・手動で今すぐ走らせたいときは Actions タブから "Run workflow" (workflow_dispatch)。
+    - cron: '0 21 * * *'
   workflow_dispatch: {}
 
 concurrency:

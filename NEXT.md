@@ -1,6 +1,9 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
+セッション6 (2026-06-01): 「Mac 起動なしで24時間・完全無料」要望に対応。調査の結果、システムは既に完全クラウド化済み (GHA scrape+notify、Turso、Vercel) で Mac 不要・.env も launchd も無しと判明。唯一の懸念だった GitHub Actions 無料枠 (private repo = 月2000分) に対し、30分間隔 scrape が月~3600-4000分で超過リスクがあった。ユーザー選択で「非公開のまま頻度を1日1回に下げる」方針。scrape を `*/30` → `0 21 * * *` (06:00 JST 毎朝1回)、notify を毎時 → `30 21` + `0 9` (06:30 + 18:00 JST の2回、idempotent なので二重通知なし) に変更。月使用量 ~360分 = 無料枠の18% に収まり、完全無料24時間を確定。コードに秘密情報ゼロ (全て GitHub Secrets 経由) も確認済み、将来 public 化したくなれば即可能。
+
+## Now (旧)
 セッション5 (2026-05-30): 「9府県の全市区町村の空き家バンク取得」要望に対応。海沿い市町村 blacklist 機能を実装 (filter.py + filters.yaml + tests)。和歌山県南紀沿岸 8自治体 + 三重県南伊勢〜熊野沿岸 7自治体 + 京都伊根町 + 大阪岬町 + 山口長門市 を default で blacklist。akiya-athome 全国版検索 API (`/bukken/search/list/?pref_cd=XX`) は現在メンテ中で HTTP 500、復旧後に scraper 実装予定。LIFULL HOME's は CloudFront WAF で 403 + 商用サイト規約懸念で見送り。本日 GHA scrape は前回 1回 Turso 502 で失敗、次回 cron で自動回復 (一過性)。
 
 ## Now (旧)
@@ -111,3 +114,5 @@
 - 2026-05-28 (セッション4): 本番反映完了。GHA scrape 32 source 全動作 (raw 909件、new 75件 = 三好25+美祢49+ieichiba 1件)、notify trigger で `scanned=629 passed=49 sent=49` → Discord に49件のダイジェスト送信成功。これで関西圏+空き家率高い5県の自治体公式空き家バンクをほぼ網羅。
 - 2026-05-30 (セッション5): ユーザー要望「9府県の全市区町村空き家バンク取得 (海沿い・シロアリリスク除外)」に対応。①海沿い市町村 blacklist 機能を実装 (filter.FilterConfig に city_blacklist、filter.passes で city 単位除外、tests 2件追加)、filters.yaml に default で和歌山県南紀沿岸 8 + 三重県南伊勢〜熊野沿岸 7 + 京都伊根町 + 大阪岬町 + 山口長門市 を設定。②akiya-athome 全国版検索 API は本日メンテ中 (HTTP 500、トップは復旧)、復旧後に scraper 実装予定。③LIFULL HOME's は CloudFront WAF で 403、商用サイト規約懸念で見送り。Turso 502 一過性エラーは次回 cron で自動回復確認 (放置方針)。
 - 2026-05-30 (セッション5): city_blacklist の選定方針 = 「市の大半が海沿いで内陸エリアがほとんどない小自治体」のみ。京丹後/舞鶴/与謝野/古座川/田辺/新宮/萩/下関などはユーザー指定または内陸エリア豊富のため blacklist 対象外、ng_keywords (オーシャンビュー等) と is_dilapidated で個別判定。
+- 2026-06-01 (セッション6): システム調査で「既に完全クラウド24時間稼働・Mac不要」を確認。GHA scrape は GitHub サーバーの schedule トリガーで動作 (直近 runner は全て schedule/main)、ローカルに .env / launchd / playwright 依存なし。コード全文走査で Discord webhook / Turso token / パスワードのハードコード無し (全て GitHub Secrets / Vercel env var 経由)、git 履歴にも秘密ファイル未コミット → public 化しても安全と確認。
+- 2026-06-01 (セッション6): GitHub Actions 無料枠 (private repo 月2000分) 対策。観測値で scrape 30分間隔は GitHub のスケジュール throttle で実際 ~11回/日だが、それでも月 ~3000-4000分で枠超過リスク (今月6/1リセット直後なので今は動作中だが月後半で停止の恐れ)。ユーザー判断で頻度を1日1回に削減: scrape `0 21 * * *` (06:00 JST)、notify `30 21` + `0 9` (06:30 + 18:00 JST 保険2回)。月 ~360分 = 枠の18%。空き家バンクは良物件でも数日残るため1日1回で取りこぼしほぼ無し。完全無料24時間を確定。手動即時実行は Actions タブの workflow_dispatch。

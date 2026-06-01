@@ -2,8 +2,13 @@ name: notify
 
 on:
   schedule:
-    # 毎時 00 分。UTC 基準だがダイジェスト通知なので時刻ズレは問題なし。
-    - cron: '0 * * * *'
+    # scrape (06:00 JST) の直後に通知 + 夕方に保険の2回。
+    # ・21:30 UTC = 06:30 JST: 朝の scrape 完了 (~11分) 直後にダイジェスト送信。
+    # ・09:00 UTC = 18:00 JST: GitHub のスケジュール遅延で朝に取りこぼした分の保険。
+    # ・notify は idempotent (通知済みは再送しない) なので2回でも二重通知にならない。
+    # ・1回 ~0.5分 × 2回/日 = 月 ~30分 と軽量。
+    - cron: '30 21 * * *'
+    - cron: '0 9 * * *'
   workflow_dispatch: {}
 
 concurrency:
