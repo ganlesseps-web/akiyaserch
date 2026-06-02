@@ -281,3 +281,20 @@ def test_index_price_dropdown_present(client):
     assert 'name="price_min"' in r.text
     assert 'name="price_max"' in r.text
     assert "〜100万" in r.text                  # プルダウンのラベル
+
+
+# ---- 検索避け (noindex) ----
+
+def test_noindex_header(client):
+    r = client.get("/")
+    assert r.headers.get("X-Robots-Tag") == "noindex, nofollow"
+
+
+def test_noindex_header_on_healthz(client):
+    r = client.get("/healthz")
+    assert "noindex" in r.headers.get("X-Robots-Tag", "")
+
+
+def test_noindex_meta_tag(client):
+    r = client.get("/")
+    assert 'name="robots"' in r.text and "noindex" in r.text

@@ -23,6 +23,21 @@ from fastapi.templating import Jinja2Templates
 from .. import db
 
 app = FastAPI(title="trade dashboard")
+
+
+@app.middleware("http")
+async def add_noindex_header(request: Request, call_next):
+    """全レスポンスに検索避け (noindex) ヘッダを付ける。
+
+    ダッシュボードは Basic 認証付きの私的ツールなので、検索エンジンに
+    URL ごとインデックスされないよう X-Robots-Tag を付与する
+    (認証で弾かれる 401 や /healthz も含め、全レスポンスに付く)。
+    """
+    response = await call_next(request)
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 _security = HTTPBasic(auto_error=False)
