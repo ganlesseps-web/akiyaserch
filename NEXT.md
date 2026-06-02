@@ -1,7 +1,7 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
-セッション7 (2026-06-02): ダッシュボードの検索・フィルタ強化。「都道府県でしぼる」プルダウン（実際にデータがある県だけを件数付きで表示）と「価格でしぼる」入力（下限〜上限、万円単位）を追加。タブ切替や並べ替えをしてもフィルタ条件が維持されるようにし、該当件数も表示。tests/test_web.py を新規追加（_query_rows のフィルタ／_prefectures 集計／_man_to_yen 万円換算／TestClient で画面レンダリングと絞り込みのスモーク）、全36テスト緑。ローカルの仮想環境 (.venv) が trade→akiyaserch のフォルダ名変更で壊れていたため `uv sync` で作り直し（pytest は dev extra なので `uv run --extra dev pytest`）。フィルタを本番ダッシュボード (Vercel) に出すには claude/wip を main にマージする必要あり（Vercel は main を自動デプロイ）。Vercel のダッシュボードパスワードは藤本さんが変更済みで、リポ公開はいつでも可能な状態。
+セッション7 (2026-06-02): ダッシュボードの検索・フィルタ強化。「都道府県でしぼる」プルダウン（実際にデータがある県だけを件数付きで表示）と「価格でしぼる」入力（下限〜上限、万円単位）を追加。タブ切替や並べ替えをしてもフィルタ条件が維持されるようにし、該当件数も表示。tests/test_web.py を新規追加（_query_rows のフィルタ／_prefectures 集計／_man_to_yen 万円換算／TestClient で画面レンダリングと絞り込みのスモーク）、全36テスト緑。ローカルの仮想環境 (.venv) が trade→akiyaserch のフォルダ名変更で壊れていたため `uv sync` で作り直し（pytest は dev extra なので `uv run --extra dev pytest`）。フィルタは main にマージ済み・Vercel デプロイ成功で本番反映完了。あわせてリポジトリを private→public 化（パスワード変更済みのため過去履歴の旧パスワードは無効、安全）。public 化で GitHub Actions も無制限になり、無料枠の懸念が完全解消。
 
 ## Now (旧)
 セッション6 (2026-06-01): 「Mac 起動なしで24時間・完全無料」要望に対応。調査の結果、システムは既に完全クラウド化済み (GHA scrape+notify、Turso、Vercel) で Mac 不要・.env も launchd も無しと判明。唯一の懸念だった GitHub Actions 無料枠 (private repo = 月2000分) に対し、30分間隔 scrape が月~3600-4000分で超過リスクがあった。ユーザー選択で「非公開のまま頻度を1日1回に下げる」方針。scrape を `*/30` → `0 21 * * *` (06:00 JST 毎朝1回)、notify を毎時 → `30 21` + `0 9` (06:30 + 18:00 JST の2回、idempotent なので二重通知なし) に変更。月使用量 ~360分 = 無料枠の18% に収まり、完全無料24時間を確定。コードに秘密情報ゼロ (全て GitHub Secrets 経由) も確認済み、将来 public 化したくなれば即可能。
@@ -13,7 +13,7 @@
 さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。セッション4 (2026-05-28): 「空き家率高い県 (山梨/和歌山/徳島/高知/山口) で内陸・補助金あり」要望に対応。filter allowlist に山梨/高知/山口 を追加、5自治体 scraper 追加 (北杜/橋本/三好/本山/美祢、全 akiya-athome 系 = サブクラス追加だけで対応)。神山町は専用バンク無し (全国版に登録のみ) で見送り。実物件は三好25 + 美祢49 = +74件、他3自治体 (北杜/橋本/本山) は現在 0 件だが scraper は登録済 (将来追加時に自動取得)。総自治体数 27→32。本番反映完了: GHA scrape 12分・三好25+美祢49=新規74件投入、notify は `scanned=629 passed=49 sent=49` で Discord に49件のダイジェスト送信成功。
 
 ## Next (Mac)
-- [ ] **フィルタ機能を本番反映** — claude/wip を main にマージすると Vercel が自動デプロイし、ダッシュボードに都道府県・価格フィルタが出る（PR 経由でも可）。マージは藤本さん判断。
+- [x] **フィルタ機能を本番反映** — 2026-06-02 完了。main へ ff マージ → Vercel デプロイ成功。
 - [x] Turso DB 作成、Vercel デプロイ、GitHub Secrets 登録、Basic 認証セット、家いちば追加、UI 強化、AIスコアリング実装 (2026-05-26 完了)
 - [ ] **(オフ中) AI スコアリング再開** — `config/preferences.yaml` の `score_threshold` を 6 に戻す + `.github/workflows/score.yml` の `schedule` コメント外す。既存スコアは残っているので新規物件のみ採点 → 月 $0.05 程度。
 - [ ] **(オフ中) preferences カスタマイズ** — `config/preferences.yaml` の description を自分の好みに編集 → preferences_hash が変わるので再開時に全件再採点 ($0.31 程度)。
@@ -123,3 +123,5 @@
 - 2026-06-01 (セッション6 続き): リポ公開化の前検査。全 git 履歴を走査し、Discord webhook URL / Turso トークンはコミットされていない (変数名と .example プレースホルダのみ) ことを確認 ✅。唯一 NEXT.md にダッシュボードの Basic 認証パスワードが平文で残っていた (現行 + 過去 commit 49601e8/0592e3a) ため、現行 NEXT.md は redact 済。過去履歴には残るため、公開前に Vercel の DASHBOARD_PASSWORD を rotate する方針 (ユーザー選択「先にパスワード変更してから公開」)。深刻度は低 (ダッシュボードは公開情報の物件一覧 + ★評価のみ、金銭/個人情報/アカウント乗っ取り無し) だが本筋対応として rotate。rotate 完了後にリポを public 化予定。集めている空き家情報自体は全て公開情報、scraped データは Turso 側で repo には入らない。
 - 2026-06-02 (セッション7): ダッシュボードに都道府県・価格フィルタを追加。app.py の _query_rows に pref/price_min/price_max を追加（価格は NULL を範囲指定時に自動除外）、_prefectures() で実データのある都道府県を件数降順で取得しプルダウン化、_man_to_yen() で万円入力を円換算（空/非数値/負は無視）。index.html に都道府県プルダウン＋下限〜上限（万円）入力＋該当件数表示を追加、タブ/検索リンクが pref/price/sort/q を urlencode で引き継ぐように。tests/test_web.py 新規（フィルタ・集計・変換・TestClient スモーク）で全36緑。本番反映は main マージ待ち。
 - 2026-06-02 (セッション7): ローカル .venv が trade→akiyaserch のフォルダ名変更で壊れていた（pyvenv の shebang が旧パス /Users/owner/Desktop/trade/... を指す）。rm -rf .venv → uv sync で再構築。pytest は optional-dependencies の dev extra にあるため `uv run --extra dev pytest` で実行する点に注意。
+- 2026-06-02 (セッション7): 都道府県・価格フィルタを本番反映。claude/wip は origin/main を完全に含み2コミット先行だったため `git merge --ff-only` でクリーンに main へ ff、push で Vercel が自動デプロイ → commit status success 確認。本番反映完了。
+- 2026-06-02 (セッション7): リポジトリを private → public 化 (`gh repo edit --visibility public`)。前提のダッシュボードパスワード変更は藤本さんが Vercel 側で完了済みのため、過去履歴に残る旧 Basic 認証パスワードは無効化済みで安全。public 化により GitHub Actions 実行枠が無制限になり無料枠超過の懸念も恒久解消。集めている空き家情報は全て公開情報、scraped データは Turso 側で repo には含まれない。
