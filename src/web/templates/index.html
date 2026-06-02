@@ -19,6 +19,10 @@
   .controls { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
   .controls select, .controls input { padding: 0.4rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; background: white; }
   .controls input[type=text] { flex: 1; min-width: 140px; }
+  .price-filter { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .controls input.price-input { width: 72px; flex: 0 0 auto; }
+  .price-sep, .price-unit { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+  .result-count { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.5rem 0.2rem; }
   .card { display: grid; grid-template-columns: 100px 1fr auto; gap: 0.8rem; padding: 0.7rem 0.3rem;
           border-bottom: 1px solid var(--border); align-items: center; }
   .card.read { opacity: 0.45; }
@@ -64,24 +68,38 @@
       ("all","すべて"),("unread","未読"),("favorites","★お気に入り"),
       ("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("land","🏞️土地のみ"),("apartment","🏢マンション")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
+    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&price_min={{price_min}}&price_max={{price_max}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
 <form class="controls" method="get">
   <input type="hidden" name="view" value="{{view}}">
-  <select name="sort" onchange="this.form.submit()">
+  <select name="pref" onchange="this.form.submit()" title="都道府県でしぼり込む">
+    <option value="">🗾 全ての都道府県</option>
+    {% for pname, cnt in prefectures %}
+      <option value="{{pname}}" {% if pname == pref %}selected{% endif %}>{{pname}} ({{cnt}})</option>
+    {% endfor %}
+  </select>
+  <select name="sort" onchange="this.form.submit()" title="並べ替え">
     {% for s, label in sort_options %}
       <option value="{{s}}" {% if s == sort %}selected{% endif %}>{{label}}</option>
     {% endfor %}
   </select>
+  <span class="price-filter" title="価格でしぼり込む (万円)">
+    <input type="number" name="price_min" placeholder="下限" value="{{price_min}}" min="0" inputmode="numeric" class="price-input">
+    <span class="price-sep">〜</span>
+    <input type="number" name="price_max" placeholder="上限" value="{{price_max}}" min="0" inputmode="numeric" class="price-input">
+    <span class="price-unit">万円</span>
+  </span>
   <input type="text" name="q" placeholder="🔍 住所/タイトル検索" value="{{q}}" autocomplete="off">
   <button type="submit" style="padding:0.4rem 0.9rem;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;">検索</button>
-  {% if q %}<a href="?view={{view}}&sort={{sort}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
+  {% if q or pref or price_min or price_max %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
 </form>
 
-{% if not rows %}
-  <p class="empty">該当物件がありません。{% if q %}検索条件を変えてみてください。{% endif %}</p>
+{% if rows %}
+  <p class="result-count">該当 {{ rows|length }} 件{% if rows|length >= 200 %} 以上{% endif %}</p>
+{% else %}
+  <p class="empty">該当物件がありません。{% if q or pref or price_min or price_max %}条件を変えてみてください。{% endif %}</p>
 {% endif %}
 
 {% for r in rows %}

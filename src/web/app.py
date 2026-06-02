@@ -63,7 +63,14 @@ SORT_OPTIONS = {
 
 
 def _query_rows(
-    conn: Any, view: str, sort: str, q: str | None, limit: int = 200
+    conn: Any,
+    view: str,
+    sort: str,
+    q: str | None,
+    pref: str | None = None,
+    price_min: int | None = None,
+    price_max: int | None = None,
+    limit: int = 200,
 ) -> list[Any]:
     base = """
         SELECT p.*,
@@ -106,6 +113,20 @@ def _query_rows(
         like = f"%{q}%"
         params.extend([like, like, like])
 
+    # 都道府県フィルタ (完全一致)
+    if pref:
+        base += " AND p.prefecture = ?"
+        params.append(pref)
+
+    # 価格フィルタ。price が NULL (価格不明) の物件は範囲指定時に自動的に外れる
+    # (SQLite では NULL >= x / NULL <= x はいずれも偽になるため)。
+    if price_min is not None:
+        base += " AND p.price >= ?"
+        params.append(price_min)
+    if price_max is not None:
+        base += " AND p.price <= ?"
+        params.append(price_max)
+
     sort_sql = SORT_OPTIONS.get(sort, SORT_OPTIONS["new"])
     base += f" ORDER BY {sort_sql} LIMIT ?"
     params.append(limit)
@@ -141,22 +162,66 @@ def _counts(conn: Any) -> dict[str, int]:
     }
 
 
+def _prefectures(conn: Any) -> list[tuple[str, int]]:
+    """アクティブ (未却下) 物件に存在する都道府県を、件数の多い順に返す。
+
+    プルダウンの選択肢用。実際にデータがある県だけを出す。
+    """
+    rows = conn.execute(
+        "SELECT prefecture, COUNT(*) AS cnt FROM properties p"
+        " WHERE p.status = 'active'"
+        "   AND p.prefecture IS NOT NULL AND p.prefecture != ''"
+        "   AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        " GROUP BY prefecture ORDER BY cnt DESC, prefecture"
+    ).fetchall()
+    return [(r["prefecture"], r["cnt"]) for r in rows]
+
+
+def _man_to_yen(val: str | None) -> int | None:
+    """「万円」単位の入力文字列を円に変換する。
+
+    空欄・非数値・負数は None を返す (= フィルタを掛けない)。
+    例: "100" -> 1_000_000、"" -> None、"abc" -> None。
+    """
+    if not val:
+        return None
+    try:
+        man = float(val)
+    except (TypeError, ValueError):
+        return None
+    if man < 0:
+        return None
+    return int(man * 10_000)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(
     request: Request,
     view: str = "all",
     sort: str = "new",
     q: str | None = None,
+    pref: str | None = None,
+    price_min: str | None = None,
+    price_max: str | None = None,
     _=Depends(auth),
 ) -> HTMLResponse:
     with db.connect() as conn:
-        rows = _query_rows(conn, view, sort, q)
+        rows = _query_rows(
+            conn, view, sort, q,
+            pref=pref or None,
+            price_min=_man_to_yen(price_min),
+            price_max=_man_to_yen(price_max),
+        )
         counts = _counts(conn)
+        prefectures = _prefectures(conn)
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
             "rows": rows, "view": view, "sort": sort, "q": q or "",
+            "pref": pref or "",
+            "price_min": price_min or "", "price_max": price_max or "",
+            "prefectures": prefectures,
             "counts": counts,
             "sort_options": [
                 ("new", "新着順"),
