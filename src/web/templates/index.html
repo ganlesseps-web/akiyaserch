@@ -66,7 +66,7 @@
 
 <nav>
   {% for v, label in [
-      ("all","すべて"),("unread","未読"),("settlement","🎯もらえる家"),("favorites","★お気に入り"),
+      ("all","すべて"),("unread","未読"),("free","🆓0円物件"),("favorites","★お気に入り"),
       ("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("land","🏞️土地のみ"),("apartment","🏢マンション")] %}
     <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>

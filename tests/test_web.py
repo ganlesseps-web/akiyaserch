@@ -141,12 +141,12 @@ def test_prefectures_skips_null_and_empty(conn):
 
 # ---- settlement ビュー / 市区町村フィルタ / _cities ----
 
-def test_settlement_view(conn):
-    _insert(conn, "1", settlement_offer=1, title="もらえる家")
-    _insert(conn, "2", settlement_offer=0, title="普通の家")
-    rows = webapp._query_rows(conn, "settlement", "new", None)
+def test_free_view(conn):
+    _insert(conn, "1", price=0, title="0円物件")
+    _insert(conn, "2", price=1_000_000, title="有料物件")
+    rows = webapp._query_rows(conn, "free", "new", None)
     assert len(rows) == 1
-    assert rows[0]["title"] == "もらえる家"
+    assert rows[0]["title"] == "0円物件"
 
 
 def test_city_filter(conn):
@@ -206,20 +206,21 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("TRADE_DB_PATH", str(tmp_path / "demo.db"))
     db.init_db()
     seed = [
-        ("兵庫県", "姫路市", 800_000, "姫路の戸建て", 0),
-        ("大阪府", "大東市", 2_500_000, "大東の家", 0),
-        ("京都府", "伊根町", 500_000, "伊根の古民家", 0),
-        ("奈良県", "東吉野村", 5_000_000, "東吉野の家(定住で譲渡)", 1),
+        ("兵庫県", "姫路市", 800_000, "姫路の戸建て"),
+        ("大阪府", "大東市", 2_500_000, "大東の家"),
+        ("京都府", "伊根町", 500_000, "伊根の古民家"),
+        ("奈良県", "東吉野村", 5_000_000, "東吉野の家"),
+        ("和歌山県", "橋本市", 0, "橋本の0円物件"),
     ]
     with db.connect() as c:
-        for i, (pref, city, price, title, settle) in enumerate(seed):
+        for i, (pref, city, price, title) in enumerate(seed):
             c.execute(
                 "INSERT INTO properties (source, listing_id, url, title, price,"
-                " prefecture, city, address, settlement_offer,"
+                " prefecture, city, address,"
                 " first_seen_at, last_seen_at, status)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,'active')",
+                " VALUES (?,?,?,?,?,?,?,?,?,?,'active')",
                 ("demo", str(i), "https://x", title, price, pref, city,
-                 f"{pref}{city}", settle, db.now_iso(), db.now_iso()),
+                 f"{pref}{city}", db.now_iso(), db.now_iso()),
             )
     from fastapi.testclient import TestClient
     from src.web.app import app
@@ -255,11 +256,11 @@ def test_index_filters_combine_with_view_tabs(client):
     assert "姫路の戸建て" not in r.text
 
 
-def test_index_settlement_tab(client):
-    r = client.get("/", params={"view": "settlement"})
+def test_index_free_tab(client):
+    r = client.get("/", params={"view": "free"})
     assert r.status_code == 200
-    assert "東吉野の家" in r.text             # settlement_offer=1
-    assert "姫路の戸建て" not in r.text         # settlement_offer=0
+    assert "橋本の0円物件" in r.text           # price=0
+    assert "姫路の戸建て" not in r.text         # price>0
 
 
 def test_index_city_dropdown_appears_only_with_pref(client):

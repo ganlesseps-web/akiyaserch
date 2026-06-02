@@ -121,10 +121,11 @@ def _query_rows(
         base += " AND EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
     elif view == "rated":
         base += " AND EXISTS (SELECT 1 FROM ratings WHERE property_id = p.id)"
-    elif view == "settlement":
-        # 「もらえる家」(定住条件付き譲渡・試住制度・改修費返済不要 など) のみ
+    elif view == "free":
+        # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
+        # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
         base += (
-            " AND p.settlement_offer = 1"
+            " AND p.price = 0"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
     else:  # all
@@ -177,9 +178,9 @@ def _counts(conn: Any) -> dict[str, int]:
         ).fetchone()[0],
         "rated": conn.execute("SELECT COUNT(*) FROM ratings").fetchone()[0],
         "dismissed": conn.execute("SELECT COUNT(*) FROM dismissed").fetchone()[0],
-        "settlement": conn.execute(
+        "free": conn.execute(
             "SELECT COUNT(*) FROM properties p WHERE p.status='active'"
-            " AND p.settlement_offer = 1"
+            " AND p.price = 0"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         ).fetchone()[0],
         "house": conn.execute(
