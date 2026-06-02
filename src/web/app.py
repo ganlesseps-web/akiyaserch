@@ -68,6 +68,7 @@ def _query_rows(
     sort: str,
     q: str | None,
     pref: str | None = None,
+    city: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
     limit: int = 200,
@@ -105,6 +106,12 @@ def _query_rows(
         base += " AND EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
     elif view == "rated":
         base += " AND EXISTS (SELECT 1 FROM ratings WHERE property_id = p.id)"
+    elif view == "settlement":
+        # 「もらえる家」(定住条件付き譲渡・試住制度・改修費返済不要 など) のみ
+        base += (
+            " AND p.settlement_offer = 1"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        )
     else:  # all
         base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
 
@@ -117,6 +124,11 @@ def _query_rows(
     if pref:
         base += " AND p.prefecture = ?"
         params.append(pref)
+
+    # 市区町村フィルタ (完全一致)
+    if city:
+        base += " AND p.city = ?"
+        params.append(city)
 
     # 価格フィルタ。price が NULL (価格不明) の物件は範囲指定時に自動的に外れる
     # (SQLite では NULL >= x / NULL <= x はいずれも偽になるため)。
@@ -150,6 +162,11 @@ def _counts(conn: Any) -> dict[str, int]:
         ).fetchone()[0],
         "rated": conn.execute("SELECT COUNT(*) FROM ratings").fetchone()[0],
         "dismissed": conn.execute("SELECT COUNT(*) FROM dismissed").fetchone()[0],
+        "settlement": conn.execute(
+            "SELECT COUNT(*) FROM properties p WHERE p.status='active'"
+            " AND p.settlement_offer = 1"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        ).fetchone()[0],
         "house": conn.execute(
             "SELECT COUNT(*) FROM properties WHERE property_type = 'house' AND status='active'"
         ).fetchone()[0],
@@ -177,6 +194,24 @@ def _prefectures(conn: Any) -> list[tuple[str, int]]:
     return [(r["prefecture"], r["cnt"]) for r in rows]
 
 
+def _cities(conn: Any, pref: str | None) -> list[tuple[str, int]]:
+    """指定した都道府県内の市区町村を、件数の多い順に返す。
+
+    都道府県プルダウンで県を選んだときだけ中身が出る (pref 未指定なら空)。
+    """
+    if not pref:
+        return []
+    rows = conn.execute(
+        "SELECT city, COUNT(*) AS cnt FROM properties p"
+        " WHERE p.status = 'active' AND p.prefecture = ?"
+        "   AND p.city IS NOT NULL AND p.city != ''"
+        "   AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        " GROUP BY city ORDER BY cnt DESC, city",
+        (pref,),
+    ).fetchall()
+    return [(r["city"], r["cnt"]) for r in rows]
+
+
 def _man_to_yen(val: str | None) -> int | None:
     """「万円」単位の入力文字列を円に変換する。
 
@@ -201,6 +236,7 @@ def index(
     sort: str = "new",
     q: str | None = None,
     pref: str | None = None,
+    city: str | None = None,
     price_min: str | None = None,
     price_max: str | None = None,
     _=Depends(auth),
@@ -209,19 +245,21 @@ def index(
         rows = _query_rows(
             conn, view, sort, q,
             pref=pref or None,
+            city=city or None,
             price_min=_man_to_yen(price_min),
             price_max=_man_to_yen(price_max),
         )
         counts = _counts(conn)
         prefectures = _prefectures(conn)
+        cities = _cities(conn, pref or None)
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
             "rows": rows, "view": view, "sort": sort, "q": q or "",
-            "pref": pref or "",
+            "pref": pref or "", "city": city or "",
             "price_min": price_min or "", "price_max": price_max or "",
-            "prefectures": prefectures,
+            "prefectures": prefectures, "cities": cities,
             "counts": counts,
             "sort_options": [
                 ("new", "新着順"),

@@ -12,6 +12,7 @@ def conn():
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
     c.executescript(db.SCHEMA)
+    db._run_migrations(c)  # property_type / settlement_offer 等の追加列を反映
     yield c
     c.close()
 
@@ -138,6 +139,48 @@ def test_prefectures_skips_null_and_empty(conn):
     assert prefs == {"京都府": 1}
 
 
+# ---- settlement ビュー / 市区町村フィルタ / _cities ----
+
+def test_settlement_view(conn):
+    _insert(conn, "1", settlement_offer=1, title="もらえる家")
+    _insert(conn, "2", settlement_offer=0, title="普通の家")
+    rows = webapp._query_rows(conn, "settlement", "new", None)
+    assert len(rows) == 1
+    assert rows[0]["title"] == "もらえる家"
+
+
+def test_city_filter(conn):
+    _insert(conn, "1", prefecture="兵庫県", city="姫路市")
+    _insert(conn, "2", prefecture="兵庫県", city="神戸市")
+    rows = webapp._query_rows(conn, "all", "new", None, pref="兵庫県", city="姫路市")
+    assert len(rows) == 1
+    assert rows[0]["city"] == "姫路市"
+
+
+def test_cities_for_pref(conn):
+    _insert(conn, "1", prefecture="兵庫県", city="姫路市")
+    _insert(conn, "2", prefecture="兵庫県", city="姫路市")
+    _insert(conn, "3", prefecture="兵庫県", city="神戸市")
+    _insert(conn, "4", prefecture="大阪府", city="大阪市")
+    cities = webapp._cities(conn, "兵庫県")
+    assert cities[0] == ("姫路市", 2)              # 件数の多い順
+    assert ("神戸市", 1) in cities
+    assert all(c[0] != "大阪市" for c in cities)    # 他県は含まない
+
+
+def test_cities_empty_without_pref(conn):
+    _insert(conn, "1", prefecture="兵庫県", city="姫路市")
+    assert webapp._cities(conn, None) == []
+
+
+def test_cities_excludes_dismissed(conn):
+    p1 = _insert(conn, "1", prefecture="奈良県", city="奈良市")
+    _insert(conn, "2", prefecture="奈良県", city="奈良市")
+    _dismiss(conn, p1)
+    cities = dict(webapp._cities(conn, "奈良県"))
+    assert cities["奈良市"] == 1
+
+
 # ---- _man_to_yen (万円入力 → 円) ----
 
 @pytest.mark.parametrize("val,expected", [
@@ -163,19 +206,20 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("TRADE_DB_PATH", str(tmp_path / "demo.db"))
     db.init_db()
     seed = [
-        ("兵庫県", "姫路市", 800_000, "姫路の戸建て"),
-        ("大阪府", "大東市", 2_500_000, "大東の家"),
-        ("京都府", "伊根町", 500_000, "伊根の古民家"),
-        ("奈良県", "東吉野村", 5_000_000, "東吉野の家"),
+        ("兵庫県", "姫路市", 800_000, "姫路の戸建て", 0),
+        ("大阪府", "大東市", 2_500_000, "大東の家", 0),
+        ("京都府", "伊根町", 500_000, "伊根の古民家", 0),
+        ("奈良県", "東吉野村", 5_000_000, "東吉野の家(定住で譲渡)", 1),
     ]
     with db.connect() as c:
-        for i, (pref, city, price, title) in enumerate(seed):
+        for i, (pref, city, price, title, settle) in enumerate(seed):
             c.execute(
                 "INSERT INTO properties (source, listing_id, url, title, price,"
-                " prefecture, city, address, first_seen_at, last_seen_at, status)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,'active')",
+                " prefecture, city, address, settlement_offer,"
+                " first_seen_at, last_seen_at, status)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,'active')",
                 ("demo", str(i), "https://x", title, price, pref, city,
-                 f"{pref}{city}", db.now_iso(), db.now_iso()),
+                 f"{pref}{city}", settle, db.now_iso(), db.now_iso()),
             )
     from fastapi.testclient import TestClient
     from src.web.app import app
@@ -209,3 +253,31 @@ def test_index_filters_combine_with_view_tabs(client):
     assert r.status_code == 200
     assert "伊根の古民家" in r.text
     assert "姫路の戸建て" not in r.text
+
+
+def test_index_settlement_tab(client):
+    r = client.get("/", params={"view": "settlement"})
+    assert r.status_code == 200
+    assert "東吉野の家" in r.text             # settlement_offer=1
+    assert "姫路の戸建て" not in r.text         # settlement_offer=0
+
+
+def test_index_city_dropdown_appears_only_with_pref(client):
+    r = client.get("/", params={"pref": "兵庫県"})
+    assert 'name="city"' in r.text             # 県を選ぶと市町村プルダウンが出る
+    assert "姫路市" in r.text
+    r2 = client.get("/")
+    assert 'name="city"' not in r2.text         # 県未選択なら市町村プルダウンは無い
+
+
+def test_index_city_filter(client):
+    r = client.get("/", params={"pref": "兵庫県", "city": "姫路市"})
+    assert r.status_code == 200
+    assert "姫路の戸建て" in r.text
+
+
+def test_index_price_dropdown_present(client):
+    r = client.get("/")
+    assert 'name="price_min"' in r.text
+    assert 'name="price_max"' in r.text
+    assert "〜100万" in r.text                  # プルダウンのラベル
