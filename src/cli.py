@@ -99,7 +99,7 @@ def score(limit: int) -> None:
 
 @cli.command()
 def reclassify() -> None:
-    """既存物件の property_type と dilapidated を title+body から再判定。"""
+    """既存物件の property_type / dilapidated / move_in_ready を title+body から再判定。"""
     db.init_db()  # ALTER TABLE が必要なら自動実行
     with db.connect() as conn:
         rows = conn.execute(
@@ -107,17 +107,26 @@ def reclassify() -> None:
         ).fetchall()
         type_counts: dict[str, int] = {}
         dilap_count = 0
+        ready_count = 0
         for r in rows:
             pt = normalize.classify_property_type(r["title"], r["body"])
             is_bad, reason = normalize.is_dilapidated(r["title"], r["body"])
+            is_ready, ready_reason = normalize.is_move_in_ready(r["title"], r["body"])
             type_counts[pt] = type_counts.get(pt, 0) + 1
             if is_bad:
                 dilap_count += 1
+            if is_ready:
+                ready_count += 1
             conn.execute(
-                "UPDATE properties SET property_type = ?, dilapidated = ?, dilapidation_reason = ? WHERE id = ?",
-                (pt, 1 if is_bad else 0, reason or None, r["id"]),
+                "UPDATE properties SET property_type = ?, dilapidated = ?, dilapidation_reason = ?, "
+                "move_in_ready = ?, move_in_ready_reason = ? WHERE id = ?",
+                (pt, 1 if is_bad else 0, reason or None,
+                 1 if is_ready else 0, ready_reason or None, r["id"]),
             )
-    click.echo(f"reclassified {len(rows)} properties: type={type_counts}, dilapidated={dilap_count}")
+    click.echo(
+        f"reclassified {len(rows)} properties: type={type_counts}, "
+        f"dilapidated={dilap_count}, move_in_ready={ready_count}"
+    )
 
 
 @cli.group("launchd")

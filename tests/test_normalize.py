@@ -1,5 +1,8 @@
 """normalize の単体テスト。住所/価格/面積パースの境界を確認。"""
-from src.normalize import normalize, _parse_price, _parse_area, _extract_prefecture, _extract_city
+from src.normalize import (
+    normalize, _parse_price, _parse_area, _extract_prefecture, _extract_city,
+    is_move_in_ready, is_dilapidated,
+)
 from src.scrapers.base import RawListing
 
 
@@ -71,3 +74,60 @@ def test_tokyo_to():
     listing = normalize(_raw(address_text="東京都千代田区丸の内"))
     assert listing.prefecture == "東京都"
     assert listing.city == "千代田区"
+
+
+# ---- is_move_in_ready (修繕不要・即入居の判定) ----
+
+def test_move_in_ready_positive():
+    """リフォーム済 / 即入居可 等は True。"""
+    for txt in [
+        "フルリフォーム済みの戸建て",
+        "水回りリフォーム済、即入居可能です",
+        "リノベーション済みでそのまま住めます",
+        "築浅の中古住宅",
+        "ハウスクリーニング済みできれいです",
+        "新築同様の美しい室内",
+    ]:
+        ok, reason = is_move_in_ready(None, txt)
+        assert ok, f"should be ready: {txt}"
+        assert reason
+
+
+def test_move_in_ready_negative_needs_repair():
+    """『要リフォーム』『リフォームが必要』は False (これから直す必要がある)。"""
+    for txt in [
+        "要リフォームの古民家",
+        "全体的にリフォームが必要です",
+        "大規模な改修が必要",
+        "即入居不可、修繕してからの入居となります",
+    ]:
+        ok, _ = is_move_in_ready(None, txt)
+        assert not ok, f"should NOT be ready: {txt}"
+
+
+def test_move_in_ready_bare_reform_not_matched():
+    """素の『リフォーム』だけ (完了形でない) では True にしない。"""
+    ok, _ = is_move_in_ready(None, "リフォームして住むのがおすすめの物件")
+    assert not ok
+
+
+def test_move_in_ready_empty():
+    assert is_move_in_ready(None, None) == (False, "")
+    assert is_move_in_ready("", "") == (False, "")
+
+
+def test_normalize_sets_move_in_ready_flag():
+    """normalize() が move_in_ready フラグを立てる。"""
+    listing = normalize(_raw(title="リフォーム済みの家", body="即入居可能"))
+    assert listing.move_in_ready == 1
+    assert listing.move_in_ready_reason
+
+    plain = normalize(_raw(title="古い空き家", body="要リフォーム"))
+    assert plain.move_in_ready == 0
+
+
+def test_move_in_ready_and_dilapidated_are_independent():
+    """ボロ判定と即入居判定はそれぞれ独立に動く。"""
+    ok, _ = is_move_in_ready(None, "リフォーム済み")
+    bad, _ = is_dilapidated(None, "リフォーム済み")
+    assert ok and not bad

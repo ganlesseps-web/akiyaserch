@@ -48,6 +48,7 @@ def normalize(raw: RawListing) -> Listing:
     # 無ければ title+body からキーワード分類にフォールバック。
     property_type = raw.property_type_hint or classify_property_type(raw.title, raw.body)
     is_bad, reason = is_dilapidated(raw.title, raw.body)
+    is_ready, ready_reason = is_move_in_ready(raw.title, raw.body)
     has_settlement, settlement_reason = detect_settlement_offer(raw.title, raw.body)
 
     return Listing(
@@ -67,6 +68,8 @@ def normalize(raw: RawListing) -> Listing:
         property_type=property_type,
         dilapidated=1 if is_bad else 0,
         dilapidation_reason=reason or None,
+        move_in_ready=1 if is_ready else 0,
+        move_in_ready_reason=ready_reason or None,
         settlement_offer=1 if has_settlement else 0,
         settlement_offer_reason=settlement_reason or None,
     )
@@ -161,6 +164,55 @@ def is_dilapidated(title: str | None, body: str | None) -> tuple[bool, str]:
                          "フルリノベ前提", "フルリノベが必要", "フルリノベーション必要"):
             if need_pat in text:
                 return True, need_pat
+
+    return False, ""
+
+
+def is_move_in_ready(title: str | None, body: str | None) -> tuple[bool, str]:
+    """「修繕しなくてもすぐ住める」物件の判定。
+
+    リフォーム済み・即入居可・築浅 など、説明文に「そのまま住める」と
+    はっきり書かれた物件だけを True にする (確度重視・取りこぼし許容)。
+
+    注意: 「要リフォーム」「リフォームが必要」のような“これから直す必要がある”
+    文言は弾く。素の「リフォーム」だけでは True にしない (「リフォーム済」等の
+    完了形のみ拾う)。判定対象は building 系のみを想定 (土地に改装はないため
+    実質的に家のみがヒットする)。
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return False, ""
+
+    # 「これから修繕が要る」系が書かれていたら、ポジティブ語があっても住める保証に
+    # ならないので除外する (例: 「水回りはリフォーム済だが大規模改修が必要」)。
+    NEGATIVE = (
+        "要リフォーム", "リフォームが必要", "リフォーム必要", "リフォームを要",
+        "改修が必要", "修繕が必要", "要改修", "要修繕",
+        "即入居不可", "入居不可", "現況有姿のまま",
+    )
+    for ng in NEGATIVE:
+        if ng in text:
+            return False, ""
+
+    # そのまま住めることを示す確実なシグナル (完了形・即入居系のみ)
+    POSITIVE = (
+        # リフォーム / リノベ 完了
+        "リフォーム済", "リフォーム後", "フルリフォーム", "全面リフォーム",
+        "内装リフォーム", "水回りリフォーム", "リフォーム物件",
+        "フルリノベ", "リノベ済", "リノベーション済", "全面改装",
+        "改装済", "改修済", "改装後", "改修後",
+        # 清掃済
+        "ハウスクリーニング済", "クリーニング済",
+        # 即入居・そのまま居住
+        "即入居可", "即入居可能", "即入居OK", "即入居ＯＫ", "即時入居",
+        "すぐ住める", "すぐに住める", "そのまま住める", "そのまま入居",
+        "そのまま生活", "そのまま暮ら",
+        # 新しさ
+        "新築同様", "新築そっくり", "築浅",
+    )
+    for kw in POSITIVE:
+        if kw in text:
+            return True, kw
 
     return False, ""
 
