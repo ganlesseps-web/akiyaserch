@@ -137,11 +137,12 @@ def _query_rows(
     else:  # all
         base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
 
-    # 「住める空き家だけ」: 発見系ビューでは“明らかに修繕が必要・住めない物件”
-    # (dilapidated) を隠す。お気に入り/通知済み/評価済み/却下 はユーザーが
-    # 明示的に作った一覧なので、たとえオンボロ判定でもそのまま表示する。
+    # 「住める空き家だけ」: 発見系ビューでは“住めない物件”(dilapidated) と
+    # “修繕が必要と明記された物件”(needs_repair) を隠す。お気に入り/通知済み/
+    # 評価済み/却下 はユーザーが明示的に作った一覧なのでそのまま全件表示する。
     if view not in ("favorites", "notified", "dismissed", "rated"):
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
+        base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -174,11 +175,13 @@ def _query_rows(
 
 
 def _counts(conn: Any) -> dict[str, int]:
-    # 発見系タブの共通条件: アクティブ / 未却下 / “明らかに住めない物件”は除外。
+    # 発見系タブの共通条件: アクティブ / 未却下 / 住めない物件(dilapidated) と
+    # 修繕が必要な物件(needs_repair) は除外。
     # (_query_rows の発見系ビューと件数を一致させるため)
     live = (
         " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
+        " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
     )
 
     def count(extra: str = "") -> int:

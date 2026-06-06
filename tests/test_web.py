@@ -214,6 +214,43 @@ def test_counts_exclude_dilapidated_and_count_ready(conn):
     assert counts["ready"] == 1     # 即入居のみ
 
 
+def test_all_view_hides_needs_repair(conn):
+    """普段の一覧 (all) では『修繕が必要』と書かれた物件も隠す。"""
+    _insert(conn, "1", title="きれいな家", needs_repair=0)
+    _insert(conn, "2", title="要リフォーム物件", needs_repair=1)
+    rows = webapp._query_rows(conn, "all", "new", None)
+    assert {r["title"] for r in rows} == {"きれいな家"}
+
+
+def test_house_view_hides_needs_repair(conn):
+    _insert(conn, "1", title="改装不要の家", property_type="house", needs_repair=0)
+    _insert(conn, "2", title="改修必要の家", property_type="house", needs_repair=1)
+    rows = webapp._query_rows(conn, "house", "new", None)
+    assert {r["title"] for r in rows} == {"改装不要の家"}
+
+
+def test_favorites_still_show_needs_repair(conn):
+    """お気に入りに入れた物件は、修繕必要でもちゃんと出す。"""
+    pid = _insert(conn, "1", title="お気に入りの要修繕物件", needs_repair=1)
+    _favorite(conn, pid)
+    rows = webapp._query_rows(conn, "favorites", "new", None)
+    assert {r["title"] for r in rows} == {"お気に入りの要修繕物件"}
+
+
+def test_ready_view_excludes_needs_repair(conn):
+    """即入居OK タブは『修繕が必要』フラグの物件を出さない。"""
+    _insert(conn, "1", title="一部リフォーム済だが要改修", move_in_ready=1, needs_repair=1)
+    rows = webapp._query_rows(conn, "ready", "new", None)
+    assert rows == []
+
+
+def test_counts_exclude_needs_repair(conn):
+    _insert(conn, "1", title="普通", dilapidated=0, needs_repair=0)
+    _insert(conn, "2", title="要修繕", dilapidated=0, needs_repair=1)
+    counts = webapp._counts(conn)
+    assert counts["all"] == 1       # 要修繕は除外
+
+
 def test_city_filter(conn):
     _insert(conn, "1", prefecture="兵庫県", city="姫路市")
     _insert(conn, "2", prefecture="兵庫県", city="神戸市")
