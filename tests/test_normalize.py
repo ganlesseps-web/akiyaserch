@@ -1,7 +1,7 @@
 """normalize の単体テスト。住所/価格/面積パースの境界を確認。"""
 from src.normalize import (
     normalize, _parse_price, _parse_area, _extract_prefecture, _extract_city,
-    is_move_in_ready, is_dilapidated,
+    is_move_in_ready, is_dilapidated, needs_repair,
 )
 from src.scrapers.base import RawListing
 
@@ -131,3 +131,56 @@ def test_move_in_ready_and_dilapidated_are_independent():
     ok, _ = is_move_in_ready(None, "リフォーム済み")
     bad, _ = is_dilapidated(None, "リフォーム済み")
     assert ok and not bad
+
+
+# ---- needs_repair (修繕が必要と明記された物件) ----
+
+def test_needs_repair_positive():
+    """「要リフォーム」「修繕が必要」等は True。"""
+    for txt in [
+        "要リフォームの古民家です",
+        "全体的にリフォームが必要です",
+        "改修が必要なマンション1棟",
+        "屋根の補修が必要です",
+        "住むには少し手直しが必要",
+        "リフォーム前提でお譲りします",
+    ]:
+        ok, reason = needs_repair(None, txt)
+        assert ok, f"should need repair: {txt}"
+        assert reason
+
+
+def test_needs_repair_negative():
+    """修繕に触れない／不要と書かれた物件は False。"""
+    for txt in [
+        "リフォーム済みで即入居可",
+        "きれいな築浅住宅",
+        "リフォーム不要でそのまま住めます",
+        "修繕の必要はありません",
+        "広い庭付きの一軒家",
+    ]:
+        ok, _ = needs_repair(None, txt)
+        assert not ok, f"should NOT need repair: {txt}"
+
+
+def test_needs_repair_empty():
+    assert needs_repair(None, None) == (False, "")
+    assert needs_repair("", "") == (False, "")
+
+
+def test_normalize_sets_needs_repair_flag():
+    """normalize() が needs_repair フラグを立てる。"""
+    listing = normalize(_raw(title="古民家", body="全面的に要リフォーム"))
+    assert listing.needs_repair == 1
+    assert listing.needs_repair_reason
+
+    clean = normalize(_raw(title="きれいな家", body="リフォーム済み"))
+    assert clean.needs_repair == 0
+
+
+def test_needs_repair_and_move_in_ready_mutually_consistent():
+    """「要リフォーム」は needs_repair=True かつ move_in_ready=False。"""
+    txt = "要リフォーム"
+    repair, _ = needs_repair(None, txt)
+    ready, _ = is_move_in_ready(None, txt)
+    assert repair and not ready

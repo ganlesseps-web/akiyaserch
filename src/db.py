@@ -122,6 +122,8 @@ class Listing:
     dilapidation_reason: str | None = None  # ヒットしたキーワード/フレーズ
     move_in_ready: int = 0  # 1 = リフォーム済/即入居可 等「そのまま住める」判定、0 = なし
     move_in_ready_reason: str | None = None  # ヒットしたキーワード/フレーズ
+    needs_repair: int = 0  # 1 = 「要リフォーム/修繕が必要」等の明示シグナル、0 = なし
+    needs_repair_reason: str | None = None  # ヒットしたキーワード/フレーズ
     settlement_offer: int = 0  # 1 = 定住条件付き譲渡 / 試住制度 / 改修費返済不要 等を検出
     settlement_offer_reason: str | None = None  # ヒットしたキーワード/フレーズ
 
@@ -272,6 +274,8 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN settlement_offer_reason TEXT",
     "ALTER TABLE properties ADD COLUMN move_in_ready INTEGER DEFAULT 0",
     "ALTER TABLE properties ADD COLUMN move_in_ready_reason TEXT",
+    "ALTER TABLE properties ADD COLUMN needs_repair INTEGER DEFAULT 0",
+    "ALTER TABLE properties ADD COLUMN needs_repair_reason TEXT",
 ]
 
 
@@ -306,9 +310,10 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
                 area_land, area_building, thumbnail_url, body, posted_at,
                 property_type, dilapidated, dilapidation_reason,
                 move_in_ready, move_in_ready_reason,
+                needs_repair, needs_repair_reason,
                 settlement_offer, settlement_offer_reason,
                 first_seen_at, last_seen_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 listing.source, listing.listing_id, listing.url, listing.title,
@@ -317,6 +322,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
                 listing.body, listing.posted_at, listing.property_type,
                 listing.dilapidated, listing.dilapidation_reason,
                 listing.move_in_ready, listing.move_in_ready_reason,
+                listing.needs_repair, listing.needs_repair_reason,
                 listing.settlement_offer, listing.settlement_offer_reason,
                 now, now,
             ),
@@ -330,6 +336,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             posted_at = ?, property_type = ?,
             dilapidated = ?, dilapidation_reason = ?,
             move_in_ready = ?, move_in_ready_reason = ?,
+            needs_repair = ?, needs_repair_reason = ?,
             settlement_offer = ?, settlement_offer_reason = ?,
             last_seen_at = ?
         WHERE id = ?
@@ -340,6 +347,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             listing.body, listing.posted_at, listing.property_type,
             listing.dilapidated, listing.dilapidation_reason,
             listing.move_in_ready, listing.move_in_ready_reason,
+            listing.needs_repair, listing.needs_repair_reason,
             listing.settlement_offer, listing.settlement_offer_reason,
             now, row["id"],
         ),

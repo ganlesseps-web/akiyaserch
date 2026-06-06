@@ -49,6 +49,7 @@ def normalize(raw: RawListing) -> Listing:
     property_type = raw.property_type_hint or classify_property_type(raw.title, raw.body)
     is_bad, reason = is_dilapidated(raw.title, raw.body)
     is_ready, ready_reason = is_move_in_ready(raw.title, raw.body)
+    repair_needed, repair_reason = needs_repair(raw.title, raw.body)
     has_settlement, settlement_reason = detect_settlement_offer(raw.title, raw.body)
 
     return Listing(
@@ -70,6 +71,8 @@ def normalize(raw: RawListing) -> Listing:
         dilapidation_reason=reason or None,
         move_in_ready=1 if is_ready else 0,
         move_in_ready_reason=ready_reason or None,
+        needs_repair=1 if repair_needed else 0,
+        needs_repair_reason=repair_reason or None,
         settlement_offer=1 if has_settlement else 0,
         settlement_offer_reason=settlement_reason or None,
     )
@@ -211,6 +214,50 @@ def is_move_in_ready(title: str | None, body: str | None) -> tuple[bool, str]:
         "新築同様", "新築そっくり", "築浅",
     )
     for kw in POSITIVE:
+        if kw in text:
+            return True, kw
+
+    return False, ""
+
+
+def needs_repair(title: str | None, body: str | None) -> tuple[bool, str]:
+    """「修繕・リフォームが必要」と明記された物件の判定。
+
+    is_dilapidated (廃屋・倒壊・大規模改修 等の“住めない”レベル) より軽い、
+    「住めはするが手を入れる必要がある」物件を拾う。ダッシュボード一覧から
+    除外する用途 (ユーザー要望: 修繕が必要な空き家はリストから外す)。
+
+    注意:
+    - 完了形 (リフォーム済) や否定形 (リフォーム不要 / 必要ありません) は対象外。
+    - dilapidated と重複しても問題ない (一覧ではどちらでも除外される)。
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return False, ""
+
+    # 「不要」「必要なし」「必要ありません」系 → 修繕は要らないので対象外。
+    NO_REPAIR = (
+        "リフォーム不要", "リフォームは不要", "リフォーム必要なし", "リフォームの必要なし",
+        "リフォームの必要はあり", "リフォームが必要ありません",
+        "修繕不要", "修繕は不要", "修繕必要なし", "修繕の必要なし",
+        "修繕の必要はあり", "修繕が必要ありません",
+        "改修不要", "改修必要なし", "改修の必要はあり", "改修が必要ありません",
+        "補修不要",
+    )
+    for ok in NO_REPAIR:
+        if ok in text:
+            return False, ""
+
+    # 「これから手を入れる必要がある」ことを示す明示シグナル。
+    NEED = (
+        "要リフォーム", "リフォームが必要", "リフォーム必要", "リフォーム前提",
+        "要改修", "改修が必要", "改修必要",
+        "要修繕", "修繕が必要", "修繕必要",
+        "要補修", "補修が必要",
+        "要改装", "改装が必要",
+        "手を入れる必要", "手直しが必要", "手入れが必要",
+    )
+    for kw in NEED:
         if kw in text:
             return True, kw
 
