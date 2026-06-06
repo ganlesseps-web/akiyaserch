@@ -149,6 +149,71 @@ def test_free_view(conn):
     assert rows[0]["title"] == "0円物件"
 
 
+# ---- 住める空き家フィルタ (dilapidated 除外 / 即入居OK タブ) ----
+
+def _favorite(conn, pid):
+    conn.execute(
+        "INSERT INTO favorites (property_id, note, starred_at) VALUES (?, '', ?)",
+        (pid, db.now_iso()),
+    )
+
+
+def test_all_view_hides_dilapidated(conn):
+    """普段の一覧 (all) では『明らかに住めない物件』を隠す。"""
+    _insert(conn, "1", title="普通の家", dilapidated=0)
+    _insert(conn, "2", title="廃屋", dilapidated=1)
+    rows = webapp._query_rows(conn, "all", "new", None)
+    assert {r["title"] for r in rows} == {"普通の家"}
+
+
+def test_house_view_hides_dilapidated(conn):
+    """一軒家タブでもボロ物件は隠す。"""
+    _insert(conn, "1", title="きれいな家", property_type="house", dilapidated=0)
+    _insert(conn, "2", title="ボロ家", property_type="house", dilapidated=1)
+    rows = webapp._query_rows(conn, "house", "new", None)
+    assert {r["title"] for r in rows} == {"きれいな家"}
+
+
+def test_free_view_hides_dilapidated(conn):
+    """0円タブでもボロ物件は隠す。"""
+    _insert(conn, "1", title="0円きれい", price=0, dilapidated=0)
+    _insert(conn, "2", title="0円ボロ", price=0, dilapidated=1)
+    rows = webapp._query_rows(conn, "free", "new", None)
+    assert {r["title"] for r in rows} == {"0円きれい"}
+
+
+def test_favorites_still_show_dilapidated(conn):
+    """お気に入りに入れた物件は、ボロ判定でもちゃんと出す。"""
+    pid = _insert(conn, "1", title="お気に入りのボロ家", dilapidated=1)
+    _favorite(conn, pid)
+    rows = webapp._query_rows(conn, "favorites", "new", None)
+    assert {r["title"] for r in rows} == {"お気に入りのボロ家"}
+
+
+def test_ready_view_shows_only_move_in_ready(conn):
+    """即入居OK タブは move_in_ready=1 だけを出す。"""
+    _insert(conn, "1", title="リフォーム済み", move_in_ready=1)
+    _insert(conn, "2", title="未改装", move_in_ready=0)
+    rows = webapp._query_rows(conn, "ready", "new", None)
+    assert {r["title"] for r in rows} == {"リフォーム済み"}
+
+
+def test_ready_view_excludes_dilapidated(conn):
+    """即入居OK タブはボロ判定された物件は出さない (念のため両条件)。"""
+    _insert(conn, "1", title="即入居だがボロ判定", move_in_ready=1, dilapidated=1)
+    rows = webapp._query_rows(conn, "ready", "new", None)
+    assert rows == []
+
+
+def test_counts_exclude_dilapidated_and_count_ready(conn):
+    _insert(conn, "1", title="普通", dilapidated=0, move_in_ready=0)
+    _insert(conn, "2", title="ボロ", dilapidated=1, move_in_ready=0)
+    _insert(conn, "3", title="即入居", dilapidated=0, move_in_ready=1)
+    counts = webapp._counts(conn)
+    assert counts["all"] == 2       # ボロは除外 (普通 + 即入居)
+    assert counts["ready"] == 1     # 即入居のみ
+
+
 def test_city_filter(conn):
     _insert(conn, "1", prefecture="兵庫県", city="姫路市")
     _insert(conn, "2", prefecture="兵庫県", city="神戸市")

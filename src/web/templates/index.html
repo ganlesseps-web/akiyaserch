@@ -39,6 +39,8 @@
   a.title:hover { color: var(--accent); }
   .placeholder { width: 100px; height: 75px; background: var(--dim); border-radius: 4px; }
 
+  .ready-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem;
+                 background: #e6f8ee; color: #1e8e4e; font-weight: 700; white-space: nowrap; }
   .score-badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 0.75rem;
                  background: #fff8e0; color: #946800; font-weight: 600; }
   .score-badge[data-score="8"], .score-badge[data-score="9"], .score-badge[data-score="10"] {
@@ -66,8 +68,8 @@
 
 <nav>
   {% for v, label in [
-      ("all","すべて"),("unread","未読"),("free","🆓0円物件"),("favorites","★お気に入り"),
-      ("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
+      ("all","すべて"),("ready","✨即入居OK"),("unread","未読"),("free","🆓0円物件"),
+      ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("land","🏞️土地のみ"),("apartment","🏢マンション")] %}
     <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
@@ -136,6 +138,7 @@
       </span>
       ／ {{ r['prefecture'] or '?' }} {{ r['city'] or '' }}
       {% if r['area_land'] %}／ 土地 {{ "%.0f"|format(r['area_land']) }}㎡{% endif %}
+      {% if r['move_in_ready'] %}／ <span class="ready-badge" title="{{ r['move_in_ready_reason'] or '' }}">✨即入居OK</span>{% endif %}
       {% if r['ai_score'] is not none %}
         ／ <span class="score-badge" data-score="{{r['ai_score']}}">
           {% if r['ai_score'] >= 8 %}🌟{% elif r['ai_score'] >= 6 %}✨{% else %}🤔{% endif %}

@@ -121,6 +121,12 @@ def _query_rows(
         base += " AND EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
     elif view == "rated":
         base += " AND EXISTS (SELECT 1 FROM ratings WHERE property_id = p.id)"
+    elif view == "ready":
+        # 「✨即入居OK」: リフォーム済/即入居可 等とはっきり書かれた物件のみ。
+        base += (
+            " AND p.move_in_ready = 1"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        )
     elif view == "free":
         # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
         # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
@@ -130,6 +136,12 @@ def _query_rows(
         )
     else:  # all
         base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+
+    # 「住める空き家だけ」: 発見系ビューでは“明らかに修繕が必要・住めない物件”
+    # (dilapidated) を隠す。お気に入り/通知済み/評価済み/却下 はユーザーが
+    # 明示的に作った一覧なので、たとえオンボロ判定でもそのまま表示する。
+    if view not in ("favorites", "notified", "dismissed", "rated"):
+        base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -162,36 +174,34 @@ def _query_rows(
 
 
 def _counts(conn: Any) -> dict[str, int]:
+    # 発見系タブの共通条件: アクティブ / 未却下 / “明らかに住めない物件”は除外。
+    # (_query_rows の発見系ビューと件数を一致させるため)
+    live = (
+        " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
+    )
+
+    def count(extra: str = "") -> int:
+        return conn.execute(
+            f"SELECT COUNT(*) FROM properties p WHERE p.status='active'{extra}"
+        ).fetchone()[0]
+
     return {
-        "all": conn.execute(
-            "SELECT COUNT(*) FROM properties p WHERE p.status='active'"
-            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
-        ).fetchone()[0],
-        "unread": conn.execute(
-            "SELECT COUNT(*) FROM properties p WHERE p.status='active'"
-            " AND NOT EXISTS (SELECT 1 FROM read_status WHERE property_id = p.id)"
-            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
-        ).fetchone()[0],
+        "all": count(live),
+        "unread": count(
+            " AND NOT EXISTS (SELECT 1 FROM read_status WHERE property_id = p.id)" + live
+        ),
+        "ready": count(" AND p.move_in_ready = 1" + live),
         "favorites": conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0],
         "notified": conn.execute(
             "SELECT COUNT(DISTINCT property_id) FROM notifications"
         ).fetchone()[0],
         "rated": conn.execute("SELECT COUNT(*) FROM ratings").fetchone()[0],
         "dismissed": conn.execute("SELECT COUNT(*) FROM dismissed").fetchone()[0],
-        "free": conn.execute(
-            "SELECT COUNT(*) FROM properties p WHERE p.status='active'"
-            " AND p.price = 0"
-            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
-        ).fetchone()[0],
-        "house": conn.execute(
-            "SELECT COUNT(*) FROM properties WHERE property_type = 'house' AND status='active'"
-        ).fetchone()[0],
-        "land": conn.execute(
-            "SELECT COUNT(*) FROM properties WHERE property_type = 'land' AND status='active'"
-        ).fetchone()[0],
-        "apartment": conn.execute(
-            "SELECT COUNT(*) FROM properties WHERE property_type = 'apartment' AND status='active'"
-        ).fetchone()[0],
+        "free": count(" AND p.price = 0" + live),
+        "house": count(" AND p.property_type = 'house'" + live),
+        "land": count(" AND p.property_type = 'land'" + live),
+        "apartment": count(" AND p.property_type = 'apartment'" + live),
     }
 
 
