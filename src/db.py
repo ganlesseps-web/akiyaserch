@@ -99,6 +99,19 @@ CREATE TABLE IF NOT EXISTS drive_cache (
     drive_seconds INTEGER,
     fetched_at    TEXT    NOT NULL
 );
+
+-- 値下がり履歴。scrape で既存物件の price が下がった時に1行追加。
+-- notified_at IS NULL のものが Discord 値下げ通知の対象。
+CREATE TABLE IF NOT EXISTS price_drops (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    property_id   INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    old_price     INTEGER NOT NULL,
+    new_price     INTEGER NOT NULL,
+    dropped_at    TEXT    NOT NULL,
+    notified_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_price_drops_property ON price_drops (property_id);
+CREATE INDEX IF NOT EXISTS idx_price_drops_unnotified ON price_drops (notified_at);
 """
 
 
@@ -296,9 +309,13 @@ def _run_migrations(conn: Any) -> None:
 # --------- domain operations (work with both backends) ---------
 
 def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
-    """Insert or update. Returns (property_id, is_new)."""
+    """Insert or update. Returns (property_id, is_new).
+
+    既存物件で価格が下がっていた場合は price_drops に1行記録する
+    (値下げ通知の元データ)。
+    """
     row = conn.execute(
-        "SELECT id FROM properties WHERE source = ? AND listing_id = ?",
+        "SELECT id, price FROM properties WHERE source = ? AND listing_id = ?",
         (listing.source, listing.listing_id),
     ).fetchone()
     now = now_iso()
@@ -352,7 +369,48 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             now, row["id"],
         ),
     )
+    # 値下がりを検知したら記録 (両方の価格が判明していて、新価格 < 旧価格 のとき)。
+    old_price = row["price"]
+    if old_price is not None and listing.price is not None and listing.price < old_price:
+        record_price_drop(conn, row["id"], old_price, listing.price)
     return row["id"], False
+
+
+def record_price_drop(conn: Any, property_id: int, old_price: int, new_price: int) -> None:
+    conn.execute(
+        "INSERT INTO price_drops (property_id, old_price, new_price, dropped_at) "
+        "VALUES (?, ?, ?, ?)",
+        (property_id, old_price, new_price, now_iso()),
+    )
+
+
+def unnotified_price_drops(conn: Any) -> list[Any]:
+    """Discord 未通知の値下げを、物件情報付きで返す (古い順)。"""
+    return conn.execute(
+        """
+        SELECT p.*,
+               d.id         AS drop_id,
+               d.old_price  AS drop_old_price,
+               d.new_price  AS drop_new_price,
+               d.dropped_at AS dropped_at,
+               s.score      AS ai_score,
+               s.reason     AS ai_reason
+        FROM price_drops d
+        JOIN properties p ON p.id = d.property_id
+        LEFT JOIN ai_scores s ON s.property_id = p.id
+        WHERE d.notified_at IS NULL
+          AND p.status = 'active'
+        ORDER BY d.dropped_at ASC
+        """
+    ).fetchall()
+
+
+def mark_price_drops_notified(conn: Any, drop_ids: list[int]) -> None:
+    now = now_iso()
+    conn.executemany(
+        "UPDATE price_drops SET notified_at = ? WHERE id = ?",
+        [(now, did) for did in drop_ids],
+    )
 
 
 def unnotified_pass(conn: Any, channel: str) -> list[Any]:
