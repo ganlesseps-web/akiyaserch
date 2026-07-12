@@ -289,6 +289,15 @@ class AyabeAkiyabankScraper(AkiyaAthomeBaseScraper):
     prefecture = "京都府"
 
 
+class AkaiwaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県赤磐市 (akaiwa-c33213.akiya-athome.jp).
+    岡山市の北東・ベッドタウン、内陸。自治体専用サブドメインなので area_path 不要."""
+    source = "akaiwa_akiyabank"
+    subdomain = "akaiwa-c33213"
+    area_path = ""
+    prefecture = "岡山県"
+
+
 class NishiawakuraAkiyabankScraper(AkiyaAthomeBaseScraper):
     """岡山県西粟倉村 (nishiawakura-v33643.akiya-athome.jp).
     自治体専用サブドメインなので area_path 不要."""

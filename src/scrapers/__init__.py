@@ -1,4 +1,4 @@
-from .base import Scraper, RawListing
+from .base import Scraper
 from .minna_0en import MinnaZeroEnScraper
 from .ieichiba import IeichibaScraper
 from .iga_akiyabank import IgaAkiyabankScraper
@@ -21,7 +21,9 @@ from .akiya_athome import (
     MineAkiyabankScraper,
     HokutoAkiyabankScraper,
     HashimotoAkiyabankScraper,
+    AkaiwaAkiyabankScraper,
 )
+from .takahashi_akiyabank import TakahashiAkiyabankScraper
 from .kyotango_akiya import KyotangoAkiyaScraper
 from .nabari_akiyabank import NabariAkiyabankScraper
 from .takashima_akiya import TakashimaAkiyaScraper
@@ -73,4 +75,6 @@ REGISTRY: dict[str, type[Scraper]] = {
     "classo_tambasasayama": ClassoTambasasayamaScraper,
     "higashiyoshino": HigashiyoshinoScraper,
     "totsukawa": TotsukawaScraper,
+    "akaiwa_akiyabank": AkaiwaAkiyabankScraper,
+    "takahashi_akiyabank": TakahashiAkiyabankScraper,
 }
