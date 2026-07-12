@@ -11,6 +11,7 @@ def conn():
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
     c.executescript(db.SCHEMA)
+    db._run_migrations(c)  # dilapidated / needs_repair 等の追加列を反映
     yield c
     c.close()
 
@@ -28,6 +29,7 @@ def cfg():
         min_ai_score=0,
         property_types=set(),  # 空 set = 全タイプ許可
         exclude_dilapidated=False,
+        exclude_needs_repair=False,
         city_blacklist=set(),
     )
 
@@ -91,4 +93,20 @@ def test_city_blacklist_allows_non_listed(conn, cfg):
     cfg_with_blacklist = dataclasses.replace(cfg, city_blacklist={"太地町"})
     row = _insert(conn, prefecture="大阪府", city="大阪市", address="大阪府大阪市北区")
     ok, _ = flt.passes(conn, row, cfg_with_blacklist)
+    assert ok
+
+
+def test_exclude_needs_repair_blocks(conn, cfg):
+    """exclude_needs_repair=True なら修繕必要物件は通知対象外。"""
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_needs_repair=True)
+    row = _insert(conn, price=1_000_000, needs_repair=1, needs_repair_reason="要リフォーム")
+    ok, reason = flt.passes(conn, row, strict)
+    assert not ok and "needs_repair" in reason
+
+
+def test_needs_repair_allowed_when_flag_off(conn, cfg):
+    """exclude_needs_repair=False なら修繕必要物件も通る (既定 cfg)。"""
+    row = _insert(conn, price=1_000_000, needs_repair=1)
+    ok, _ = flt.passes(conn, row, cfg)
     assert ok

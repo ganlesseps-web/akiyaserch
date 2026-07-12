@@ -76,6 +76,10 @@ property_types:
 # (否定文脈 "雨漏り対策済" "雨漏りはありません" 等は通過させる)
 exclude_dilapidated: true
 
+# True にすると normalize.needs_repair で「要リフォーム/改修が必要/修繕が必要」等が
+# 明記された物件を通知対象から除外。ダッシュボード一覧と同じ「住める空き家だけ」条件。
+exclude_needs_repair: true
+
 # 市町村 blacklist: 海沿いで塩害・シロアリ・湿気で家が傷みやすい自治体を丸ごと除外。
 # (city フィールドは normalize._extract_city が「太地町」「串本町」「○○市」を抽出)
 # allowlist された府県内であっても、ここに載っている市町村は通知対象外になる。

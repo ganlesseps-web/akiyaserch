@@ -25,6 +25,7 @@ class FilterConfig:
     min_ai_score: int  # 0 なら AI スコア無視。>0 なら scored & score >= min_ai_score を要求。
     property_types: set[str]  # 通す物件タイプ. 空 set なら全許可。
     exclude_dilapidated: bool  # True なら is_dilapidated 判定された物件を通知対象から除外
+    exclude_needs_repair: bool  # True なら needs_repair 判定された物件を通知対象から除外
     city_blacklist: set[str]  # 海沿い等で家が傷みやすい市町村を丸ごと除外 (例: 太地町)
 
     @classmethod
@@ -53,6 +54,7 @@ class FilterConfig:
             min_ai_score=min_ai_score,
             property_types=set(data.get("property_types") or []),
             exclude_dilapidated=bool(data.get("exclude_dilapidated", False)),
+            exclude_needs_repair=bool(data.get("exclude_needs_repair", True)),
             city_blacklist=set(data.get("city_blacklist") or []),
         )
 
@@ -97,6 +99,19 @@ def passes(
             except (KeyError, IndexError):
                 reason = None
             return False, f"dilapidated: {reason or 'flagged'}"
+
+    # 「修繕が必要」と明記された物件を除外 (ダッシュボード一覧と条件を揃える)
+    if cfg.exclude_needs_repair:
+        try:
+            repair = row["needs_repair"]
+        except (KeyError, IndexError):
+            repair = 0
+        if repair:
+            try:
+                reason = row["needs_repair_reason"]
+            except (KeyError, IndexError):
+                reason = None
+            return False, f"needs_repair: {reason or 'flagged'}"
 
     pref = row["prefecture"]
     if pref is None:
