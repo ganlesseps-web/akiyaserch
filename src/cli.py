@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from pathlib import Path
 
 import click
 from dotenv import load_dotenv
@@ -69,12 +68,16 @@ def scrape(source: str | None) -> None:
 @click.option("--dry-run", is_flag=True, help="Discord に送らず stdout に出すだけ")
 @click.option("--use-distance-matrix", is_flag=True, help="境界府県を Distance Matrix で詰める")
 def notify(dry_run: bool, use_distance_matrix: bool) -> None:
-    """未通知 & filter pass の物件を Discord に通知。"""
+    """未通知 & filter pass の物件を Discord に通知 (新着 + 値下げ)。"""
     from . import notifier_discord as nd
     cfg = flt.FilterConfig.load()
     with db.connect() as conn:
         stats = nd.notify(conn, cfg, dry_run=dry_run, use_distance_matrix=use_distance_matrix)
-    click.echo(f"scanned={stats['scanned']} passed={stats['passed']} sent={stats['sent']}")
+        drops = nd.notify_price_drops(
+            conn, cfg, dry_run=dry_run, use_distance_matrix=use_distance_matrix
+        )
+    click.echo(f"new:        scanned={stats['scanned']} passed={stats['passed']} sent={stats['sent']}")
+    click.echo(f"price_drop: scanned={drops['scanned']} passed={drops['passed']} sent={drops['sent']}")
 
 
 @cli.command()

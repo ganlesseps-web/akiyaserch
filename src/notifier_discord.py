@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 CHANNEL = "discord"
 EMBED_COLOR = 0x2ECC71  # green
+PRICE_DROP_COLOR = 0xE67E22  # orange — 値下げは目立たせる
 DIGEST_THRESHOLD = 10  # この件数を超えたらまとめテキストに切り替え
 
 
@@ -55,6 +56,50 @@ def notify(
             time.sleep(1.0)  # rate limit politeness
 
     db.mark_notified(conn, [r["id"] for r in passed], CHANNEL)
+    return {"scanned": len(rows), "passed": len(passed), "sent": len(passed)}
+
+
+def notify_price_drops(
+    conn: sqlite3.Connection,
+    cfg: flt.FilterConfig,
+    *,
+    dry_run: bool = False,
+    use_distance_matrix: bool = False,
+) -> dict[str, int]:
+    """未通知の値下げ (price_drops) を Discord に通知する。
+
+    新着通知 (notify) と同じ filter を通し、対象府県・価格帯・住める物件のみ
+    値下げアラートを送る。送信済みは price_drops.notified_at で管理 (二重送信なし)。
+    """
+    webhook = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not webhook and not dry_run:
+        raise RuntimeError("DISCORD_WEBHOOK_URL not set")
+
+    rows = db.unnotified_price_drops(conn)
+    passed: list[Any] = []
+    for row in rows:
+        ok, reason = flt.passes(conn, row, cfg, use_distance_matrix=use_distance_matrix)
+        if ok:
+            passed.append(row)
+        else:
+            logger.debug("skip price drop %s: %s", row["url"], reason)
+
+    if not passed:
+        return {"scanned": len(rows), "passed": 0, "sent": 0}
+
+    if dry_run:
+        for row in passed:
+            print(
+                f"[dry-run][値下げ] {_format_price(row['drop_old_price'])} → "
+                f"{_format_price(row['drop_new_price'])} {row['title']} {row['url']}"
+            )
+        return {"scanned": len(rows), "passed": len(passed), "sent": 0}
+
+    for row in passed:
+        _post_price_drop_embed(webhook, row)
+        time.sleep(1.0)  # rate limit politeness
+
+    db.mark_price_drops_notified(conn, [r["drop_id"] for r in passed])
     return {"scanned": len(rows), "passed": len(passed), "sent": len(passed)}
 
 
@@ -177,6 +222,52 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
     }
     if row["thumbnail_url"]:
         # image (大きく表示) — スマホで判断しやすい
+        embed["image"] = {"url": row["thumbnail_url"]}
+
+    _post(webhook, {"embeds": [embed]})
+
+
+def _post_price_drop_embed(webhook: str, row: Any) -> None:
+    """値下げ専用の embed。旧価格→新価格と下げ幅を目立たせる。"""
+    location = " ".join(filter(None, [row["prefecture"], row["city"]])) or "—"
+    address = row["address"] or location
+
+    old_p = row["drop_old_price"]
+    new_p = row["drop_new_price"]
+    delta = old_p - new_p
+    pct = round(delta / old_p * 100) if old_p else 0
+    drop_line = (
+        f"~~{_format_price(old_p)}~~ → **{_format_price(new_p)}**"
+        f"（−{_format_price(delta)}{f' / {pct}%↓' if pct else ''}）"
+    )
+
+    links = []
+    if address and address != "—":
+        links.append(f"[🗺️ 地図]({_maps_url(address)})")
+        links.append(f"[👀 街並み]({_streetview_url(address)})")
+    links.append(f"[⚠️ ハザード]({_hazard_url(address)})")
+    sub = _subsidy_url(row["prefecture"], row["city"])
+    if sub:
+        links.append(f"[💰 補助金]({sub})")
+
+    description = f"**🔻 値下げ**\n{drop_line}\n\n" + " ｜ ".join(links)
+
+    fields = [
+        {"name": "📍 所在地", "value": location, "inline": True},
+    ]
+    if _safe_get(row, "area_land"):
+        fields.append({"name": "📐 土地", "value": f"{row['area_land']:.0f}㎡", "inline": True})
+
+    title_text = ("🔻 " + (row["title"] or "(タイトルなし)"))[:250]
+    embed = {
+        "title": title_text,
+        "url": row["url"],
+        "color": PRICE_DROP_COLOR,
+        "description": description[:4000],
+        "fields": fields,
+        "footer": {"text": f"source: {row['source']}｜値下げ通知"},
+    }
+    if _safe_get(row, "thumbnail_url"):
         embed["image"] = {"url": row["thumbnail_url"]}
 
     _post(webhook, {"embeds": [embed]})
