@@ -251,6 +251,65 @@ def test_counts_exclude_needs_repair(conn):
     assert counts["all"] == 1       # 要修繕は除外
 
 
+# ---- 値下げ (pricedown) ----
+
+def _add_drop(conn, pid, old, new, dropped_at=None):
+    conn.execute(
+        "INSERT INTO price_drops (property_id, old_price, new_price, dropped_at)"
+        " VALUES (?, ?, ?, ?)",
+        (pid, old, new, dropped_at or db.now_iso()),
+    )
+
+
+def test_pricedown_view_shows_only_dropped(conn):
+    p1 = _insert(conn, "1", title="値下げした家", price=2_800_000)
+    _insert(conn, "2", title="据え置きの家", price=2_800_000)
+    _add_drop(conn, p1, 3_000_000, 2_800_000)
+    rows = webapp._query_rows(conn, "pricedown", "new", None)
+    assert {r["title"] for r in rows} == {"値下げした家"}
+
+
+def test_query_rows_exposes_drop_prices(conn):
+    p1 = _insert(conn, "1", title="値下げ", price=2_800_000)
+    _add_drop(conn, p1, 3_000_000, 2_800_000)
+    rows = webapp._query_rows(conn, "all", "new", None)
+    row = next(r for r in rows if r["title"] == "値下げ")
+    assert row["drop_old_price"] == 3_000_000
+    assert row["drop_new_price"] == 2_800_000
+
+
+def test_pricedown_excludes_needs_repair_and_dilapidated(conn):
+    p1 = _insert(conn, "1", title="値下げだが要修繕", price=1_000_000, needs_repair=1)
+    p2 = _insert(conn, "2", title="値下げだがボロ", price=1_000_000, dilapidated=1)
+    _add_drop(conn, p1, 2_000_000, 1_000_000)
+    _add_drop(conn, p2, 2_000_000, 1_000_000)
+    rows = webapp._query_rows(conn, "pricedown", "new", None)
+    assert rows == []  # 住めない/要修繕は値下げタブにも出さない
+
+
+def test_pricedown_orders_by_latest_drop(conn):
+    p1 = _insert(conn, "1", title="古い値下げ", price=1_000_000)
+    p2 = _insert(conn, "2", title="新しい値下げ", price=1_000_000)
+    _add_drop(conn, p1, 2_000_000, 1_000_000, dropped_at="2026-01-01T00:00:00+09:00")
+    _add_drop(conn, p2, 2_000_000, 1_000_000, dropped_at="2026-06-01T00:00:00+09:00")
+    rows = webapp._query_rows(conn, "pricedown", "new", None)
+    assert [r["title"] for r in rows] == ["新しい値下げ", "古い値下げ"]
+
+
+def test_counts_pricedown(conn):
+    p1 = _insert(conn, "1", price=1_000_000)
+    _insert(conn, "2", price=1_000_000)
+    _add_drop(conn, p1, 2_000_000, 1_000_000)
+    counts = webapp._counts(conn)
+    assert counts["pricedown"] == 1
+
+
+def test_index_pricedown_tab(client):
+    r = client.get("/", params={"view": "pricedown"})
+    assert r.status_code == 200
+    assert "🔻値下げ" in r.text  # タブが表示されている
+
+
 def test_city_filter(conn):
     _insert(conn, "1", prefecture="兵庫県", city="姫路市")
     _insert(conn, "2", prefecture="兵庫県", city="神戸市")

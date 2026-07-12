@@ -10,6 +10,7 @@ View / Sort / Search:
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from pathlib import Path
@@ -23,6 +24,22 @@ from fastapi.templating import Jinja2Templates
 from .. import db
 
 app = FastAPI(title="trade dashboard")
+
+_schema_ensured = False
+
+
+def _ensure_schema() -> None:
+    """本番 (Turso) にまだ新しいテーブル/列 (例: price_drops) が無い状態でも
+    ダッシュボードが 500 を出さないよう、プロセス起動後の初回リクエストで
+    一度だけ冪等にスキーマを流す (CREATE IF NOT EXISTS / ALTER は no-op)。"""
+    global _schema_ensured
+    if _schema_ensured:
+        return
+    try:
+        db.init_db()
+    except Exception:  # pragma: no cover - 起動時のベストエフォート
+        logging.getLogger(__name__).warning("init_db on web startup failed", exc_info=True)
+    _schema_ensured = True
 
 
 @app.middleware("http")
@@ -96,7 +113,11 @@ def _query_rows(
             (SELECT 1 FROM notifications WHERE property_id = p.id) AS was_notified,
             (SELECT rating FROM ratings WHERE property_id = p.id) AS rating,
             (SELECT score FROM ai_scores WHERE property_id = p.id) AS ai_score,
-            (SELECT reason FROM ai_scores WHERE property_id = p.id) AS ai_reason
+            (SELECT reason FROM ai_scores WHERE property_id = p.id) AS ai_reason,
+            (SELECT old_price FROM price_drops d WHERE d.property_id = p.id
+                 ORDER BY d.dropped_at DESC LIMIT 1) AS drop_old_price,
+            (SELECT new_price FROM price_drops d WHERE d.property_id = p.id
+                 ORDER BY d.dropped_at DESC LIMIT 1) AS drop_new_price
         FROM properties p
         WHERE p.status = 'active'
     """
@@ -125,6 +146,12 @@ def _query_rows(
         # 「✨即入居OK」: リフォーム済/即入居可 等とはっきり書かれた物件のみ。
         base += (
             " AND p.move_in_ready = 1"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        )
+    elif view == "pricedown":
+        # 「🔻値下げ」: 値下がり履歴がある物件のみ。
+        base += (
+            " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
     elif view == "free":
@@ -168,7 +195,14 @@ def _query_rows(
         base += " AND p.price <= ?"
         params.append(price_max)
 
-    sort_sql = SORT_OPTIONS.get(sort, SORT_OPTIONS["new"])
+    if view == "pricedown":
+        # 値下げタブは常に「値下がりが新しい順」で並べる (このタブの主役は値下げなので)。
+        sort_sql = (
+            "(SELECT dropped_at FROM price_drops WHERE property_id = p.id"
+            " ORDER BY dropped_at DESC LIMIT 1) DESC, p.first_seen_at DESC"
+        )
+    else:
+        sort_sql = SORT_OPTIONS.get(sort, SORT_OPTIONS["new"])
     base += f" ORDER BY {sort_sql} LIMIT ?"
     params.append(limit)
     return conn.execute(base, params).fetchall()
@@ -195,6 +229,9 @@ def _counts(conn: Any) -> dict[str, int]:
             " AND NOT EXISTS (SELECT 1 FROM read_status WHERE property_id = p.id)" + live
         ),
         "ready": count(" AND p.move_in_ready = 1" + live),
+        "pricedown": count(
+            " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)" + live
+        ),
         "favorites": conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0],
         "notified": conn.execute(
             "SELECT COUNT(DISTINCT property_id) FROM notifications"
@@ -241,6 +278,18 @@ def _cities(conn: Any, pref: str | None) -> list[tuple[str, int]]:
     return [(r["city"], r["cnt"]) for r in rows]
 
 
+def _fmt_price_short(yen: int | None) -> str:
+    """円 → 「280万円」「0円」等の短い日本語表記。値下げバッジ等の表示用。"""
+    if yen is None:
+        return "価格不明"
+    if yen == 0:
+        return "0円"
+    if yen >= 10_000:
+        man = yen / 10_000
+        return f"{int(man):,}万円" if man == int(man) else f"{man:,.1f}万円"
+    return f"{yen:,}円"
+
+
 def _man_to_yen(val: str | None) -> int | None:
     """「万円」単位の入力文字列を円に変換する。
 
@@ -270,6 +319,7 @@ def index(
     price_max: str | None = None,
     _=Depends(auth),
 ) -> HTMLResponse:
+    _ensure_schema()
     with db.connect() as conn:
         rows = _query_rows(
             conn, view, sort, q,
@@ -380,6 +430,7 @@ def _render_stars(pid: int, rating: int) -> str:
 
 # expose to templates
 TEMPLATES.env.globals["render_stars"] = _render_stars
+TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
 
 
 @app.get("/healthz")
