@@ -1,6 +1,9 @@
 # 進捗 — trade (0円・格安物件 監視＆通知システム)
 
 ## Now
+セッション10 (2026-06-06): 「値段が下がったらすぐ通知」要望に対応（値下げ検知・通知）。あわせて総合レビュー(8視点・ultracode workflow)を実施し、レビューも「価格履歴を捨てていて値下げを検知できない」を最重要の伸びしろに挙げていた。実装: ①DB に price_drops テーブル追加。scrape の upsert で既存物件の価格が下がったら1行記録（値上げ/価格不明→判明は記録しない、両バックエンド対応）。②Discord に値下げ通知 notify_price_drops を追加（新着と同じ filter を通し、対象府県・価格帯・住める物件のみ。オレンジ色 embed で 旧→新価格・下げ幅。price_drops.notified_at で二重送信防止）。cli notify が新着+値下げを1回で処理。③通知の filter にも exclude_needs_repair を追加し、ダッシュボード一覧と「住める物件だけ」条件を統一（filters.yaml 既定 true）。④ダッシュボードに「🔻値下げ」タブ（値下がり履歴のある物件を新しい順）＋各カードに「🔻値下げ 320万円→280万円」バッジ。本番 Turso に price_drops 表が無い状態でも 500 を出さないよう web 側に初回冪等スキーマ流し(_ensure_schema)を追加。全86テスト緑（+15）。実データの多可町戸建て(家いちば P202300231)で 320万→280万 の値下げが記録→タブ表示→Discord dry-run 通知まで通ることを確認。**注意**: 値下げは「この機能を入れた後に価格が変わったもの」から検知する（過去の値下げは分からない）。**本番反映**: claude/wip→main ff マージ→Vercel 自動デプロイ＋ scrape 手動起動で price_drops テーブル作成（下記 Recent decisions 参照）。
+
+## Now (旧)
 セッション9 (2026-06-06): 「修繕が必要な空き家もリストから除外して」要望に対応。セッション8 は“明らかに住めない物件 (dilapidated)”だけ除外していたが、それより軽い「住めるが手を入れる必要がある」物件（説明文に 要リフォーム/改修が必要/修繕が必要/手直しが必要 等と明記）が一覧に残っていた（ローカル641件中 43件が該当）。normalize に needs_repair 判定を新設（完了形「リフォーム済」や否定形「リフォーム不要/必要ありません」は対象外）。DB に needs_repair / needs_repair_reason 列を追加 (migration)、cli reclassify で backfill。ダッシュボードの発見系ビュー（すべて/未読/0円/一軒家/土地 等）の除外条件に needs_repair を追加（dilapidated と同じ扱い、お気に入り等の手動一覧は従来どおり全件表示）。即入居OKタブ・タブ件数も同条件に統一。全71テスト緑（+10）。ローカル reclassify: dilapidated=10 / needs_repair=48（うち4件は dilapidated と重複）→「すべて」タブは 641→587件、「即入居OK」は 55→54件。**本番反映済み**: claude/wip→main ff マージ→push（Vercel 自動デプロイ, 05a9605..5f5cd32）＋ GitHub Actions scrape 手動起動で本番 Turso に backfill（run 27060596232, 成功 10m36s, needs_repair 列マイグレーション適用済み）。本番稼働確認: /healthz=200, /=401。残る限界はセッション8と同じ: 状態を書いていない物件は判定不能のため一覧に残る（「修繕ゼロ保証」は不可）。さらに厳しくしたい場合は「即入居OK の物件だけ表示」に切替も可能（件数は大きく減る）。
 
 ## Now (旧)
@@ -38,6 +41,15 @@
 - [ ] `.venv/bin/trade launchd install` で 15分scrape + 毎時notify を仕掛ける
 
 ## Next (Remote-safe)
+### レビュー(セッション10)由来のTODO — 未対応
+- [ ] (低) ダッシュボードの Basic 認証がフェイルオープン: 環境変数未設定だと認証なしで公開される (src/web/app.py:auth)。`os.environ.get("VERCEL")` があるのに credentials 未設定なら 503 を返すガードを追加すると安全。露出は物件情報+★評価のみで実害小。
+- [ ] (低) GitHub Actions 4本に `permissions: contents: read` が無い (ci/notify/score/scrape.yml)。依存侵害時の多層防御。1行ずつ追加。
+- [ ] (中) 掲載終了(売れた)物件の検知が無い → 売却済みがダッシュボードに残り続ける。last_seen_at が更新されているので「N日 last_seen されない物件を status=sold にする」で実装可能。値下げに次ぐ価値。
+- [ ] (中) 同一物件が複数ソースに載る重複(例: 多可町戸建てが 家いちば/azurite/slowlife に重複)。UNIQUE(source,listing_id) では別ソース重複を防げない。住所+価格の近似でグルーピング検討。
+- [ ] (低) 通知の idempotency: Discord 送信失敗でも mark 済みになり二度と通知されない (notifier の _post は失敗しても return)。送信成功時のみ mark する等で改善可。
+- [ ] (中) filters.yaml の変更にコード編集+commit が必要 → 非エンジニアがスマホから府県/価格帯を変えられない。将来ダッシュボードに設定UIを。
+- [ ] スクレイパの User-Agent に実リポURLを入れる (base.py:15、対外マナー)。
+### 既存TODO
 - [x] `src/scrapers/ieichiba.py`: 家いちば JSON API 経由 (2026-05-26 完了、200件取得実績)
 - [x] `src/scrapers/iga_akiyabank.py`: 三重県伊賀市公式空き家バンク (2026-05-26 完了、18件取得)
 - [x] 自治体scraper 13本追加 (2026-05-27 完了): 神河/多可/たつの/養父独立/京丹後/福知山/名張/高島/五條/下市/わかやまLIFE/美作 + akiya-athome 汎用ベース
@@ -73,6 +85,8 @@
 - 関東/東北/北海道/九州の0円物件は10件取得済みだが allowlist (大阪圏) 対象外。次の RSS 更新で関西物件が出るまで Discord 通知は0件のまま (正常動作)。
 
 ## Recent decisions
+- 2026-06-06: セッション10。値下げ検知を実装。設計判断: 価格履歴を全部持つ price_history ではなく「値下がりイベントだけ」記録する price_drops テーブルにした(用途が値下げ通知+バッジに限られ、値上げ/価格不明→判明はノイズなため)。値下げは本機能導入後の変化からのみ検知(過去分は履歴が無いので不可)と割り切り。通知は新着と同じ filter を再利用し、対象府県・価格帯・住める物件(dilapidated/needs_repair除外)のみ送る方針。この際 filter にも exclude_needs_repair を追加し、ダッシュボードと通知の「住める物件だけ」条件を統一(それまで通知は dilapidated しか見ていなかった)。本番デプロイ時に price_drops 表が未作成でも web が 500 にならないよう、web 初回リクエストで冪等に init_db する _ensure_schema を導入。
+- 2026-06-06: セッション10 総合レビュー(8視点 ultracode workflow)実施。途中で Anthropic 利用上限(4:20pm JST リセット)に触れ product-value/一部dimensionの検証が未完だが、security と product-value の総評は取得。確認済みの主要指摘は Next(Remote-safe)冒頭「レビュー由来TODO」に記録。最重要だった「値下げ検知が無い」は本セッションで実装済み、「needs_repair が通知に未反映」も本セッションで解消。
 - 2026-06-06: セッション9。「修繕が必要な物件」も一覧から除外。dilapidated(住めないレベル)とは別に needs_repair(要リフォーム/改修が必要 等の明示シグナル)を新設し、発見系タブで両方を除外。判定できるのは“修繕が必要と明記された物件”のみで、状態未記載の物件は対象外（=一覧に残る）。さらに厳格化したい場合は「即入居OK だけ表示」へ切替できるが件数が激減するため、まずは明示シグナル除外にとどめる方針。
 - 2026-06-06: セッション8 を本番反映。コードは main へ ff マージ→Vercel 自動デプロイ。本番データの backfill は「ローカルに .env が無い（完全クラウド運用で鍵は GitHub Secrets 側）」ため、GitHub Actions の scrape を `gh workflow run scrape.yml --ref main` で手動起動して実施（scrape の upsert が既存物件を再判定して move_in_ready を埋める）。今後 backfill が必要な時もこの手順が使える。
 - 2026-06-06: 「修繕不要で住める空き家だけ」を『両方』方式で実装。発見系タブは dilapidated を隠し、別途「✨即入居OK」タブで move_in_ready を厳選表示。データの性質上「修繕ゼロ保証」は不可（説明文に状態が書かれていない物件が最多）なため、“明らかに壊れた物件の除外”＋“はっきり住めると書かれた物件の厳選”の2層で対応する方針に決定。判定はキーワードベース（完了形シグナルのみ拾い「要リフォーム」等は弾く）。将来さらに精度を上げたいときは AI スコアリング（現在オフ）を「即入居できるか」基準で再開する選択肢あり。
