@@ -393,3 +393,77 @@ class HashimotoAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "hashimoto-c30203"
     area_path = ""
     prefecture = "和歌山県"
+
+
+# --- セッション13追加: 対象府県の内陸自治体をまとめて拡充 (安い古民家の在庫を増やす) ---
+
+class NiimiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県新見市 (niimi-c33210.akiya-athome.jp). 中国山地・内陸。"""
+    source = "niimi_akiyabank"
+    subdomain = "niimi-c33210"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class KyotambaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """京都府京丹波町 (kyotamba-t26407.akiya-athome.jp). 内陸・高速道路沿い。"""
+    source = "kyotamba_akiyabank"
+    subdomain = "kyotamba-t26407"
+    area_path = ""
+    prefecture = "京都府"
+
+
+class WakeAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県和気町 (wake-c33346.akiya-athome.jp). 岡山市の北東・内陸。"""
+    source = "wake_akiyabank"
+    subdomain = "wake-t33346"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class KibichuoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県吉備中央町 (kibichuo-t33681.akiya-athome.jp). 吉備高原・内陸。"""
+    source = "kibichuo_akiyabank"
+    subdomain = "kibichuo-t33681"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class KamigoriAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県上郡町 (kamigori-t28481.akiya-athome.jp). 西播磨・内陸。"""
+    source = "kamigori_akiyabank"
+    subdomain = "kamigori-t28481"
+    area_path = ""
+    prefecture = "兵庫県"
+
+
+class KagaminoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県鏡野町 (kagamino-t33606.akiya-athome.jp). 岡山北部・内陸。"""
+    source = "kagamino_akiyabank"
+    subdomain = "kagamino-t33606"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class IchikawaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県市川町 (ichikawa-t28442.akiya-athome.jp). 中播磨・内陸。"""
+    source = "ichikawa_akiyabank"
+    subdomain = "ichikawa-t28442"
+    area_path = ""
+    prefecture = "兵庫県"
+
+
+class SayoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県佐用町 (sayo-t28501.akiya-athome.jp). 西播磨・内陸。現在少数だが将来用。"""
+    source = "sayo_akiyabank"
+    subdomain = "sayo-t28501"
+    area_path = ""
+    prefecture = "兵庫県"
+
+
+class IbaraAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県井原市 (ibara-c33207.akiya-athome.jp). 岡山西部・内陸。現在少数だが将来用。"""
+    source = "ibara_akiyabank"
+    subdomain = "ibara-c33207"
+    area_path = ""
+    prefecture = "岡山県"
