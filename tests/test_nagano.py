@@ -52,5 +52,5 @@ def test_fetch_keeps_only_chuko(monkeypatch):
 
 
 def test_registry_has_nagano():
-    for k in ("matsumoto_rakuen", "shiojiri_rakuen", "ina_rakuen"):
+    for k in ("matsumoto_rakuen", "shiojiri_rakuen", "ina_rakuen", "azumino_rakuen"):
         assert k in REGISTRY

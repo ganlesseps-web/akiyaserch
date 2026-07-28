@@ -130,3 +130,9 @@ class InaRakuenScraper(RakuenShinshuBaseScraper):
     """長野県伊那市 (JIS 20209)。"""
     source = "ina_rakuen"
     jiscode = "20209"
+
+
+class AzuminoRakuenScraper(RakuenShinshuBaseScraper):
+    """長野県安曇野市 (JIS 20220)。北アルプス山麓・田園。"""
+    source = "azumino_rakuen"
+    jiscode = "20220"
