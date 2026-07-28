@@ -321,8 +321,9 @@ def _parse_price(text: str | None) -> int | None:
     if not text:
         return None
     s = text.replace(",", "").replace(" ", "").replace("　", "")
-    if "0円" in s or s.startswith("0") and "円" in s:
-        return 0
+    # 注: 以前ここに `if "0円" in s: return 0` があったが、"9300000円" のような
+    # 円単位の実価格も末尾が "0円" のため 0(無料) と誤読していた。通常のパース
+    # (下の 円 正規表現 + フォールバック) が "0円" を正しく 0 に解決するので不要。
     m = re.search(r"(\d+)\s*億", s)
     oku = int(m.group(1)) * 100_000_000 if m else 0
     m = re.search(r"(\d+(?:\.\d+)?)\s*万", s)

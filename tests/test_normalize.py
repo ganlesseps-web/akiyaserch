@@ -48,6 +48,17 @@ def test_parse_price_man():
     assert _parse_price(None) is None
 
 
+def test_parse_price_yen_ending_in_zero():
+    """円単位の実価格(末尾0)を 0(無料) と誤読しない回帰テスト。"""
+    assert _parse_price("9,300,000円") == 9_300_000
+    assert _parse_price("1,775,860円") == 1_775_860
+    assert _parse_price("20,000,000円") == 20_000_000
+    assert _parse_price("6,500,000円") == 6_500_000
+    # 本物の0円は引き続き 0
+    assert _parse_price("0円") == 0
+    assert _parse_price("0") == 0
+
+
 def test_parse_area():
     assert _parse_area("294.52㎡ (89.09坪)") == 294.52
     assert _parse_area("12,345.67㎡") == 12345.67
