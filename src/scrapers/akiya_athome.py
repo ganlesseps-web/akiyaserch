@@ -467,3 +467,11 @@ class IbaraAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "ibara-c33207"
     area_path = ""
     prefecture = "岡山県"
+
+
+class NirasakiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """山梨県韮崎市 (nirasaki-c19207.akiya-athome.jp). 甲府盆地北西・内陸。"""
+    source = "nirasaki_akiyabank"
+    subdomain = "nirasaki-c19207"
+    area_path = ""
+    prefecture = "山梨県"
