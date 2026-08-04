@@ -50,6 +50,8 @@ def normalize(raw: RawListing) -> Listing:
     is_bad, reason = is_dilapidated(raw.title, raw.body)
     is_ready, ready_reason = is_move_in_ready(raw.title, raw.body)
     repair_needed, repair_reason = needs_repair(raw.title, raw.body)
+    ng, ng_reason = detect_resale_ng(raw.title, raw.body)
+    warnings = detect_resale_warnings(raw.title, raw.body)
     has_settlement, settlement_reason = detect_settlement_offer(raw.title, raw.body)
 
     return Listing(
@@ -73,6 +75,9 @@ def normalize(raw: RawListing) -> Listing:
         move_in_ready_reason=ready_reason or None,
         needs_repair=1 if repair_needed else 0,
         needs_repair_reason=repair_reason or None,
+        resale_ng=1 if ng else 0,
+        resale_ng_reason=ng_reason or None,
+        resale_warnings="|".join(warnings) if warnings else None,
         settlement_offer=1 if has_settlement else 0,
         settlement_offer_reason=settlement_reason or None,
     )
@@ -262,6 +267,117 @@ def needs_repair(title: str | None, body: str | None) -> tuple[bool, str]:
             return True, kw
 
     return False, ""
+
+
+# 浸水深の明記 (例: "浸水想定 3.0m", "浸水深0.5〜3m") を拾う
+_FLOOD_DEPTH_RE = re.compile(r"浸水[^。]{0,20}?([0-9]+(?:\.[0-9]+)?)\s*(?:m|ｍ|メートル)")
+
+# 空き家年数の明記 (例: "空き家となって7年")
+_VACANCY_YEARS_RE = re.compile(r"空き家[^。]{0,8}?([0-9]{1,2})\s*年")
+
+
+def detect_resale_ng(title: str | None, body: str | None) -> tuple[bool, str]:
+    """再販仕入れの「ハード除外」判定 (どの出口=売買/賃貸/民泊でも救えないもの)。
+
+    プロ壁打ち(2026-08 セッション15)の合意仕様:
+    - 再建築不可・未接道 / 借地権 / 共有持分売り / 井戸水のみ(上水道なし)
+    - 浸水3m以上・家屋倒壊等氾濫想定区域・土砂災害特別警戒区域(レッド) の明記
+    明記された場合のみ True (記載が無ければ通す=デフォルト通過が設計原則)。
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return False, ""
+
+    DEFINITIVE = (
+        # 再建築・接道
+        # ※「再建築ができ」だけだと肯定形「再建築ができます」も拾ってしまうため、
+        #   否定形 (できません/できない/不可) を明示的に並べる。
+        "再建築不可", "再建築はでき", "再建築負荷",
+        "再建築ができません", "再建築ができない", "再建築ができず",
+        "再建築はできません", "再建築はできない",
+        "未接道", "接道なし", "接道無し", "接道していない", "接道義務を満たしていない",
+        # 権利系
+        "共有持分", "持分のみ", "持分売買", "持分の売却",
+        # 水害・土砂 (明記時)
+        "家屋倒壊等氾濫想定区域", "土砂災害特別警戒区域", "レッドゾーン",
+        # ライフライン: 井戸のみ
+        "井戸水のみ", "上水道なし", "上水道無し", "水道は井戸", "飲用水は井戸のみ",
+    )
+    for kw in DEFINITIVE:
+        if kw in text:
+            return True, kw
+
+    # 借地: 否定・無関係文脈 (「借地ではありません」「土地権利: 所有権」) は通す
+    if "借地" in text:
+        OK_PATTERNS = ("借地ではあり", "借地権ではあり", "借地ではなく", "所有権")
+        if not any(p in text for p in OK_PATTERNS):
+            return True, "借地"
+
+    # 浸水深 3m 以上の明記
+    m = _FLOOD_DEPTH_RE.search(text)
+    if m:
+        try:
+            if float(m.group(1)) >= 3.0:
+                return True, f"浸水想定{m.group(1)}m"
+        except ValueError:
+            pass
+
+    return False, ""
+
+
+def detect_resale_warnings(title: str | None, body: str | None) -> list[str]:
+    """再販仕入れの「⚠️警告」タグ (除外はしないが人間の判断材料として表示)。
+
+    プロ壁打ちの合意: 修繕・交渉で救える減点要素は消さずに警告に留める。
+    (和式トイレ=洋式化10〜25万 / 汲み取り=接続50〜100万 / 駐車場は記載漏れ多数 等)
+    """
+    text = ((title or "") + " " + (body or "")).strip()
+    if not text:
+        return []
+
+    # (タグ, ヒット語 tuple, 打ち消し語 tuple)
+    RULES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
+        ("和式トイレ", ("和式",),
+         ("洋式に変更", "洋式化済", "洋式へ交換", "洋式トイレに交換", "洋式に交換")),
+        ("駐車場なし", ("駐車場なし", "駐車場無し", "駐車スペースなし",
+                       "駐車場はありません", "駐車場はござ"), ()),
+        ("汲み取り式", ("汲み取り", "汲取", "くみ取り"), ()),
+        ("単独浄化槽", ("単独浄化槽", "みなし浄化槽"), ()),
+        ("市街化調整区域", ("市街化調整区域",), ()),
+        ("擁壁・傾斜地", ("擁壁", "急傾斜", "高低差"), ()),
+        ("告知事項あり", ("告知事項",), ()),
+        ("長期空き家", ("長期空き家",), ()),
+        ("バス便のみ", ("バス便",), ()),
+        ("傾きあり", ("傾きあり", "傾いて", "建物に傾", "床が沈"), ()),
+        ("井戸あり(上水道要確認)", ("井戸",),
+         ("上水道", "公営水道", "市水", "町水", "水道引込", "水道あり")),
+    )
+
+    tags: list[str] = []
+    for tag, hits, cancels in RULES:
+        if any(h in text for h in hits) and not any(c in text for c in cancels):
+            tags.append(tag)
+
+    # 空き家年数 5年以上の明記
+    m = _VACANCY_YEARS_RE.search(text)
+    if m and "長期空き家" not in tags:
+        try:
+            if int(m.group(1)) >= 5:
+                tags.append("空き家5年超")
+        except ValueError:
+            pass
+
+    # 浸水 0.5〜3m 未満の明記 (3m以上は detect_resale_ng 側でハード除外)
+    m = _FLOOD_DEPTH_RE.search(text)
+    if m:
+        try:
+            depth = float(m.group(1))
+            if 0.5 <= depth < 3.0:
+                tags.append("浸水想定あり(民泊不向き)")
+        except ValueError:
+            pass
+
+    return tags
 
 
 def classify_property_type(title: str | None, body: str | None) -> str:

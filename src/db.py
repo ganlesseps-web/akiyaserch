@@ -100,6 +100,22 @@ CREATE TABLE IF NOT EXISTS drive_cache (
     fetched_at    TEXT    NOT NULL
 );
 
+-- 再販目線の AI 構造化判定 (Claude Haiku)。物件本文から設備・ライフライン等を推定。
+-- verdict はハード除外に使わず、あくまで警告/参考表示 (最終判断は人間)。
+CREATE TABLE IF NOT EXISTS resale_ai (
+    property_id   INTEGER PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+    verdict       TEXT,      -- 検討可 / 警告 / 見送り
+    toilet        TEXT,      -- 和式 / 洋式 / 不明
+    bath          TEXT,      -- 要修繕 / 使用可 / 不明
+    lifeline      TEXT,      -- 公共下水 / 浄化槽 / 汲み取り / 井戸 / 不明
+    parking       TEXT,      -- あり / なし / 不明
+    vacancy_hint  TEXT,      -- 空き家期間の手がかり (長期 / 短期 / 不明)
+    reasons       TEXT,      -- 判断理由 (短文)
+    prompt_hash   TEXT NOT NULL,  -- 判定仕様のハッシュ。変わったら再判定。
+    model         TEXT NOT NULL,
+    assessed_at   TEXT NOT NULL
+);
+
 -- 値下がり履歴。scrape で既存物件の price が下がった時に1行追加。
 -- notified_at IS NULL のものが Discord 値下げ通知の対象。
 CREATE TABLE IF NOT EXISTS price_drops (
@@ -137,6 +153,9 @@ class Listing:
     move_in_ready_reason: str | None = None  # ヒットしたキーワード/フレーズ
     needs_repair: int = 0  # 1 = 「要リフォーム/修繕が必要」等の明示シグナル、0 = なし
     needs_repair_reason: str | None = None  # ヒットしたキーワード/フレーズ
+    resale_ng: int = 0  # 1 = 再販ハード除外 (再建築不可/借地/持分/井戸のみ/浸水3m超 等)
+    resale_ng_reason: str | None = None  # ヒットしたキーワード/フレーズ
+    resale_warnings: str | None = None  # ⚠️警告タグを "|" 区切りで保持 (和式トイレ|汲み取り 等)
     settlement_offer: int = 0  # 1 = 定住条件付き譲渡 / 試住制度 / 改修費返済不要 等を検出
     settlement_offer_reason: str | None = None  # ヒットしたキーワード/フレーズ
 
@@ -289,6 +308,9 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN move_in_ready_reason TEXT",
     "ALTER TABLE properties ADD COLUMN needs_repair INTEGER DEFAULT 0",
     "ALTER TABLE properties ADD COLUMN needs_repair_reason TEXT",
+    "ALTER TABLE properties ADD COLUMN resale_ng INTEGER DEFAULT 0",
+    "ALTER TABLE properties ADD COLUMN resale_ng_reason TEXT",
+    "ALTER TABLE properties ADD COLUMN resale_warnings TEXT",
 ]
 
 
@@ -328,9 +350,10 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
                 property_type, dilapidated, dilapidation_reason,
                 move_in_ready, move_in_ready_reason,
                 needs_repair, needs_repair_reason,
+                resale_ng, resale_ng_reason, resale_warnings,
                 settlement_offer, settlement_offer_reason,
                 first_seen_at, last_seen_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 listing.source, listing.listing_id, listing.url, listing.title,
@@ -340,6 +363,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
                 listing.dilapidated, listing.dilapidation_reason,
                 listing.move_in_ready, listing.move_in_ready_reason,
                 listing.needs_repair, listing.needs_repair_reason,
+                listing.resale_ng, listing.resale_ng_reason, listing.resale_warnings,
                 listing.settlement_offer, listing.settlement_offer_reason,
                 now, now,
             ),
@@ -354,6 +378,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             dilapidated = ?, dilapidation_reason = ?,
             move_in_ready = ?, move_in_ready_reason = ?,
             needs_repair = ?, needs_repair_reason = ?,
+            resale_ng = ?, resale_ng_reason = ?, resale_warnings = ?,
             settlement_offer = ?, settlement_offer_reason = ?,
             last_seen_at = ?
         WHERE id = ?
@@ -365,6 +390,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             listing.dilapidated, listing.dilapidation_reason,
             listing.move_in_ready, listing.move_in_ready_reason,
             listing.needs_repair, listing.needs_repair_reason,
+            listing.resale_ng, listing.resale_ng_reason, listing.resale_warnings,
             listing.settlement_offer, listing.settlement_offer_reason,
             now, row["id"],
         ),

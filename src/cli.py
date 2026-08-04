@@ -102,7 +102,7 @@ def score(limit: int) -> None:
 
 @cli.command()
 def reclassify() -> None:
-    """既存物件の property_type / dilapidated / move_in_ready / needs_repair を再判定。"""
+    """既存物件の各判定 (種別/ボロ/即入居/要修繕/再販NG・警告) を再判定。"""
     db.init_db()  # ALTER TABLE が必要なら自動実行
     with db.connect() as conn:
         rows = conn.execute(
@@ -112,11 +112,15 @@ def reclassify() -> None:
         dilap_count = 0
         ready_count = 0
         repair_count = 0
+        ng_count = 0
+        warn_count = 0
         for r in rows:
             pt = normalize.classify_property_type(r["title"], r["body"])
             is_bad, reason = normalize.is_dilapidated(r["title"], r["body"])
             is_ready, ready_reason = normalize.is_move_in_ready(r["title"], r["body"])
             repair_needed, repair_reason = normalize.needs_repair(r["title"], r["body"])
+            ng, ng_reason = normalize.detect_resale_ng(r["title"], r["body"])
+            warnings = normalize.detect_resale_warnings(r["title"], r["body"])
             type_counts[pt] = type_counts.get(pt, 0) + 1
             if is_bad:
                 dilap_count += 1
@@ -124,17 +128,38 @@ def reclassify() -> None:
                 ready_count += 1
             if repair_needed:
                 repair_count += 1
+            if ng:
+                ng_count += 1
+            if warnings:
+                warn_count += 1
             conn.execute(
                 "UPDATE properties SET property_type = ?, dilapidated = ?, dilapidation_reason = ?, "
                 "move_in_ready = ?, move_in_ready_reason = ?, "
-                "needs_repair = ?, needs_repair_reason = ? WHERE id = ?",
+                "needs_repair = ?, needs_repair_reason = ?, "
+                "resale_ng = ?, resale_ng_reason = ?, resale_warnings = ? WHERE id = ?",
                 (pt, 1 if is_bad else 0, reason or None,
                  1 if is_ready else 0, ready_reason or None,
-                 1 if repair_needed else 0, repair_reason or None, r["id"]),
+                 1 if repair_needed else 0, repair_reason or None,
+                 1 if ng else 0, ng_reason or None,
+                 "|".join(warnings) if warnings else None, r["id"]),
             )
     click.echo(
         f"reclassified {len(rows)} properties: type={type_counts}, "
-        f"dilapidated={dilap_count}, move_in_ready={ready_count}, needs_repair={repair_count}"
+        f"dilapidated={dilap_count}, move_in_ready={ready_count}, needs_repair={repair_count}, "
+        f"resale_ng={ng_count}, with_warnings={warn_count}"
+    )
+
+
+@cli.command()
+@click.option("--limit", default=50, type=int, help="一度に判定する最大件数")
+def assess(limit: int) -> None:
+    """再販目線の AI 構造化判定 (設備/ライフライン/空き家期間を Claude で推定)。"""
+    from . import resale_ai
+    db.init_db()
+    with db.connect() as conn:
+        stats = resale_ai.assess_unassessed(conn, limit=limit)
+    click.echo(
+        f"target={stats['target']} assessed={stats['assessed']} failed={stats['failed']}"
     )
 
 
