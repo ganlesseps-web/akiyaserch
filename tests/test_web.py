@@ -304,6 +304,44 @@ def test_counts_pricedown(conn):
     assert counts["pricedown"] == 1
 
 
+# ---- 再販フィルタ (ハード除外 / ⚠️警告チップ) ----
+
+def test_all_view_hides_resale_ng(conn):
+    _insert(conn, "1", title="普通の家", resale_ng=0)
+    _insert(conn, "2", title="再建築不可の家", resale_ng=1)
+    rows = webapp._query_rows(conn, "all", "new", None)
+    assert {r["title"] for r in rows} == {"普通の家"}
+
+
+def test_favorites_still_show_resale_ng(conn):
+    """お気に入りは再販NGでも表示する (ユーザーが作った一覧は消さない)。"""
+    pid = _insert(conn, "1", title="お気に入りの借地物件", resale_ng=1)
+    _favorite(conn, pid)
+    rows = webapp._query_rows(conn, "favorites", "new", None)
+    assert {r["title"] for r in rows} == {"お気に入りの借地物件"}
+
+
+def test_counts_exclude_resale_ng(conn):
+    _insert(conn, "1", title="普通", resale_ng=0)
+    _insert(conn, "2", title="NG", resale_ng=1)
+    assert webapp._counts(conn)["all"] == 1
+
+
+def test_warning_chips_from_keywords_and_municipality(conn):
+    _insert(conn, "1", city="東吉野村", prefecture="奈良県",
+            resale_warnings="和式トイレ|汲み取り式")
+    row = webapp._query_rows(conn, "all", "new", None)[0]
+    chips = webapp._warning_chips(row)
+    assert "和式トイレ" in chips and "汲み取り式" in chips
+    assert any("小規模" in c for c in chips)      # 東吉野村=1,281人・両フラグなし
+
+
+def test_warning_chips_empty_for_clean_property(conn):
+    _insert(conn, "1", city="高梁市", prefecture="岡山県")
+    row = webapp._query_rows(conn, "all", "new", None)[0]
+    assert webapp._warning_chips(row) == []
+
+
 def test_index_pricedown_tab(client):
     r = client.get("/", params={"view": "pricedown"})
     assert r.status_code == 200

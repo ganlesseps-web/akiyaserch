@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import db
+from .. import db, municipalities
 
 app = FastAPI(title="trade dashboard")
 
@@ -117,7 +117,9 @@ def _query_rows(
             (SELECT old_price FROM price_drops d WHERE d.property_id = p.id
                  ORDER BY d.dropped_at DESC LIMIT 1) AS drop_old_price,
             (SELECT new_price FROM price_drops d WHERE d.property_id = p.id
-                 ORDER BY d.dropped_at DESC LIMIT 1) AS drop_new_price
+                 ORDER BY d.dropped_at DESC LIMIT 1) AS drop_new_price,
+            (SELECT verdict FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict,
+            (SELECT reasons FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict_reason
         FROM properties p
         WHERE p.status = 'active'
     """
@@ -170,6 +172,8 @@ def _query_rows(
     if view not in ("favorites", "notified", "dismissed", "rated"):
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
+        # 再販ハード除外 (再建築不可/借地/共有持分/井戸のみ/浸水3m超 等)
+        base += " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -216,6 +220,7 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
+        " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
     )
 
     def count(extra: str = "") -> int:
@@ -276,6 +281,34 @@ def _cities(conn: Any, pref: str | None) -> list[tuple[str, int]]:
         (pref,),
     ).fetchall()
     return [(r["city"], r["cnt"]) for r in rows]
+
+
+def _warning_chips(row: Any) -> list[str]:
+    """物件カードに出す⚠️警告チップの一覧を組み立てる。
+
+    キーワード判定 (resale_warnings) + 自治体マスタ (小規模市場) + AI判定の
+    見送り/警告 を1つのリストにまとめる。除外はせず「見えるようにする」用途。
+    """
+    def get(key: str) -> Any:
+        try:
+            return row[key]
+        except (KeyError, IndexError, TypeError):
+            return None
+
+    chips: list[str] = []
+    raw = get("resale_warnings")
+    if raw:
+        chips.extend([t for t in str(raw).split("|") if t])
+
+    warn = municipalities.market_warning(get("city"))
+    if warn:
+        chips.append(warn)
+
+    verdict = get("ai_verdict")
+    if verdict in ("見送り", "警告"):
+        reason = (get("ai_verdict_reason") or "").strip()
+        chips.append(f"AI:{verdict}" + (f" — {reason[:40]}" if reason else ""))
+    return chips
 
 
 def _fmt_price_short(yen: int | None) -> str:
@@ -431,6 +464,7 @@ def _render_stars(pid: int, rating: int) -> str:
 # expose to templates
 TEMPLATES.env.globals["render_stars"] = _render_stars
 TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
+TEMPLATES.env.globals["warning_chips"] = _warning_chips
 
 
 @app.get("/healthz")

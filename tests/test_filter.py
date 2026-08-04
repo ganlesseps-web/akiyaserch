@@ -30,6 +30,7 @@ def cfg():
         property_types=set(),  # 空 set = 全タイプ許可
         exclude_dilapidated=False,
         exclude_needs_repair=False,
+        exclude_resale_ng=False,
         city_blacklist=set(),
     )
 
@@ -109,4 +110,22 @@ def test_needs_repair_allowed_when_flag_off(conn, cfg):
     """exclude_needs_repair=False なら修繕必要物件も通る (既定 cfg)。"""
     row = _insert(conn, price=1_000_000, needs_repair=1)
     ok, _ = flt.passes(conn, row, cfg)
+    assert ok
+
+
+def test_exclude_resale_ng_blocks(conn, cfg):
+    """再販ハード除外(再建築不可等)は通知対象外。"""
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_resale_ng=True)
+    row = _insert(conn, price=1_000_000, resale_ng=1, resale_ng_reason="再建築不可")
+    ok, reason = flt.passes(conn, row, strict)
+    assert not ok and "resale_ng" in reason
+
+
+def test_resale_warnings_do_not_block(conn, cfg):
+    """⚠️警告だけの物件は通知を止めない (消さずに見せる方針)。"""
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_resale_ng=True)
+    row = _insert(conn, price=1_000_000, resale_ng=0, resale_warnings="和式トイレ|汲み取り式")
+    ok, _ = flt.passes(conn, row, strict)
     assert ok

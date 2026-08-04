@@ -43,6 +43,9 @@
                  background: #e6f8ee; color: #1e8e4e; font-weight: 700; white-space: nowrap; }
   .drop-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem;
                 background: #fdece0; color: #c2560d; font-weight: 700; white-space: nowrap; }
+  .warn-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .warn-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
+               background: #fff6e0; color: #8a6100; border: 1px solid #f0dfae; white-space: nowrap; }
   .score-badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 0.75rem;
                  background: #fff8e0; color: #946800; font-weight: 600; }
   .score-badge[data-score="8"], .score-badge[data-score="9"], .score-badge[data-score="10"] {
@@ -152,6 +155,12 @@
       <span style="color:#aaa;">{{ r['source'] }} ／ {{ r['first_seen_at'][:10] }}</span>
       {% if r['ai_reason'] %}<br><span style="color:#888;font-style:italic;">{{ r['ai_reason'] }}</span>{% endif %}
     </div>
+    {% set chips = warning_chips(r) %}
+    {% if chips %}
+      <div class="warn-row">
+        {% for c in chips %}<span class="warn-chip">⚠️ {{ c }}</span>{% endfor %}
+      </div>
+    {% endif %}
     {{ render_stars(r['id'], r['rating'] or 0) | safe }}
   </div>
   <div class="actions">

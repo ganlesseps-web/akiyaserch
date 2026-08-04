@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from . import db, filter as flt
+from . import db, filter as flt, municipalities
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +195,21 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
         fields.append({
             "name": "🎯 もらえる/譲渡条件あり",
             "value": f"検出語: **{reason}** — 詳細ページで条件を要確認",
+            "inline": False,
+        })
+
+    # ⚠️ 再販目線の警告 (除外はしないが、判断材料として明示する)
+    warn_tags: list[str] = []
+    raw_warn = _safe_get(row, "resale_warnings")
+    if raw_warn:
+        warn_tags.extend([t for t in str(raw_warn).split("|") if t])
+    market_warn = municipalities.market_warning(_safe_get(row, "city"))
+    if market_warn:
+        warn_tags.append(market_warn)
+    if warn_tags:
+        fields.append({
+            "name": "⚠️ 注意点",
+            "value": " / ".join(warn_tags)[:1000],
             "inline": False,
         })
 
