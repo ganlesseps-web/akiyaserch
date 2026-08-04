@@ -1,0 +1,52 @@
+name: assess
+
+# 再販目線の AI 構造化判定 (設備/ライフライン/空き家期間を Claude Haiku で推定)。
+# scrape (06:00 JST) の後に走らせる。ANTHROPIC_API_KEY が未設定なら黙って skip する
+# ので、キーを設定するまでは何も起きない (score.yml と同じ寛容な設計)。
+on:
+  schedule:
+    - cron: '30 22 * * *'   # 22:30 UTC = 07:30 JST (scrape の約1時間半後)
+  workflow_dispatch: {}
+
+concurrency:
+  group: assess
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify secrets
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          missing=""
+          [ -z "$TURSO_DATABASE_URL" ] && missing="$missing TURSO_DATABASE_URL"
+          [ -z "$ANTHROPIC_API_KEY" ] && missing="$missing ANTHROPIC_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::warning::Skipping resale AI assessment (missing:$missing). Configure in repo Secrets to enable."
+            exit 0
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install with AI extras
+        run: pip install -e ".[ai]"
+
+      - name: Run resale assessment
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.cli assess --limit 80
