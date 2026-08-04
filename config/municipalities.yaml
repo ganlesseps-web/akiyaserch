@@ -1,0 +1,96 @@
+# 自治体マスタ — 再販/賃貸/民泊の「出口」判定用
+#
+# 使い方 (src/municipalities.py):
+#   賃貸需要の核(rental_demand)も観光資源(tourism)も無く、かつ人口 1万人未満 の
+#   自治体だけ ⚠️警告 を出す。人口の絶対値では除外しない。
+#
+# なぜ人口3万カットを採用しなかったか (2026-08 プロ壁打ちの結論):
+#   3万で切ると 高梁(2.56万)/韮崎(2.78万)/甲州(2.70万)/新見(2.49万)/美作(2.32万) 等、
+#   ユーザー自身が指定した供給源がほぼ全滅する。人口の絶対値より「賃貸需要の核が
+#   あるか」「観光で民泊の出口があるか」の方が出口に直結する、が3専門家の一致見解。
+#
+# population の出典:
+#   全49自治体とも 令和7年(2025)国勢調査 人口速報集計 (2025-10-01現在) で裏取り済み。
+#   ※奈良5市町村・和歌山橋本市のみ県公式がExcel限定のため二次出典(uub.jp)で確認。
+#   確報は2026年9月公表予定。更新時は e-Stat / 各県統計ページを参照。
+#   ※ population 未設定(null)の自治体は警告を出さない (デフォルト通過の設計原則)。
+#
+# rental_demand の判定: 大工場・企業城下町 / 大学・高専 / 総合病院 / 自衛隊駐屯地 /
+#                       大都市への通勤圏 のいずれかがある
+# tourism の判定:       全国的に知られた観光資源 (城/温泉/ワイナリー/スキー場/
+#                       世界遺産/国立公園/重伝建/有名景勝) がある
+
+municipalities:
+  # ===== 岡山県 =====
+  高梁市:        {prefecture: 岡山県, population: 25600, rental_demand: true,  tourism: true}   # 備中松山城・吹屋(重伝建)、吉備国際大
+  赤磐市:        {prefecture: 岡山県, population: 40948, rental_demand: true,  tourism: false}  # 岡山市通勤圏のベッドタウン
+  新見市:        {prefecture: 岡山県, population: 24900, rental_demand: true,  tourism: true}   # 新見公立大、井倉洞・満奇洞
+  美作市:        {prefecture: 岡山県, population: 23181, rental_demand: false, tourism: true}   # 湯郷温泉
+  井原市:        {prefecture: 岡山県, population: 35338, rental_demand: true,  tourism: false}  # 繊維産業、福山通勤圏
+  和気町:        {prefecture: 岡山県, population: 12336, rental_demand: true,  tourism: false}  # 岡山市通勤圏、和気鵜飼谷
+  鏡野町:        {prefecture: 岡山県, population: 11131, rental_demand: false, tourism: true}   # 奥津温泉
+  吉備中央町:    {prefecture: 岡山県, population: 9913,  rental_demand: false, tourism: false}  # 吉備高原都市。人口1万割れ → 警告対象
+  奈義町:        {prefecture: 岡山県, population: 5100,  rental_demand: true,  tourism: false}  # 陸自日本原駐屯地
+  西粟倉村:      {prefecture: 岡山県, population: 1245,  rental_demand: false, tourism: false}  # ローカルベンチャーで有名だが商圏は極小 → 警告対象
+
+  # ===== 山梨県 =====
+  北杜市:        {prefecture: 山梨県, population: 41826, rental_demand: false, tourism: true}   # 八ヶ岳・清里、別荘地
+  南アルプス市:  {prefecture: 山梨県, population: 69250, rental_demand: true,  tourism: true}   # 甲府通勤圏、南アルプス国立公園
+  甲州市:        {prefecture: 山梨県, population: 26992, rental_demand: false, tourism: true}   # 勝沼ワイナリー、ぶどう狩り
+  韮崎市:        {prefecture: 山梨県, population: 27782, rental_demand: true,  tourism: false}  # 東京エレクトロン工場、甲府通勤圏
+
+  # ===== 山口県 =====
+  美祢市:        {prefecture: 山口県, population: 20145, rental_demand: false, tourism: true}   # 秋吉台・秋芳洞
+
+  # ===== 長野県 =====
+  松本市:        {prefecture: 長野県, population: 232347, rental_demand: true,  tourism: true}  # 信州大、松本城
+  安曇野市:      {prefecture: 長野県, population: 91861,  rental_demand: true,  tourism: true}  # 松本通勤圏、北アルプス・大王わさび
+  塩尻市:        {prefecture: 長野県, population: 65496,  rental_demand: true,  tourism: true}  # セイコーエプソン、奈良井宿(重伝建)
+  伊那市:        {prefecture: 長野県, population: 63597,  rental_demand: true,  tourism: true}  # 伊那谷の中心、高遠城址・南アルプス
+
+  # ===== 兵庫県 =====
+  たつの市:      {prefecture: 兵庫県, population: 69664, rental_demand: true,  tourism: true}   # 姫路通勤圏、龍野城下町(重伝建)
+  丹波篠山市:    {prefecture: 兵庫県, population: 37037, rental_demand: false, tourism: true}   # 篠山城下町(重伝建)、丹波黒豆
+  宍粟市:        {prefecture: 兵庫県, population: 31269, rental_demand: false, tourism: true}   # 山崎、ちくさ高原・波賀温泉
+  朝来市:        {prefecture: 兵庫県, population: 26515, rental_demand: false, tourism: true}   # 竹田城跡(天空の城)、生野銀山
+  養父市:        {prefecture: 兵庫県, population: 19757, rental_demand: false, tourism: true}   # ハチ高原・鉢伏スキー場
+  多可町:        {prefecture: 兵庫県, population: 17346, rental_demand: false, tourism: false, aliases: [多可町加美区, 多可町中区, 多可町八千代区]}
+  佐用町:        {prefecture: 兵庫県, population: 14141, rental_demand: false, tourism: true}   # 西はりま天文台、ひまわり畑
+  上郡町:        {prefecture: 兵庫県, population: 12820, rental_demand: true,  tourism: false}  # 相生・赤穂通勤圏、智頭急行
+  市川町:        {prefecture: 兵庫県, population: 9916, rental_demand: false, tourism: false}  # ゴルフ場用品産業
+  神河町:        {prefecture: 兵庫県, population: 9484, rental_demand: false, tourism: true}   # 砥峰高原、生野銀山近接
+
+  # ===== 京都府 =====
+  福知山市:      {prefecture: 京都府, population: 73549, rental_demand: true,  tourism: true}   # 福知山城、陸自駐屯地、福知山公立大
+  舞鶴市:        {prefecture: 京都府, population: 73091, rental_demand: true,  tourism: true}   # 海上自衛隊、赤れんがパーク
+  綾部市:        {prefecture: 京都府, population: 29885, rental_demand: true,  tourism: false}  # グンゼ発祥、京都通勤圏
+  南丹市:        {prefecture: 京都府, population: 30051, rental_demand: true,  tourism: true}   # 京都通勤圏、美山かやぶきの里
+  京丹後市:      {prefecture: 京都府, population: 46712, rental_demand: false, tourism: true}   # 天橋立近接、久美浜・夕日ヶ浦温泉
+  京丹波町:      {prefecture: 京都府, population: 11350, rental_demand: false, tourism: false}  # 高速IC、丹波栗
+  伊根町:        {prefecture: 京都府, population: 1691,  rental_demand: false, tourism: true}   # 伊根の舟屋(重伝建)。人口極小だが観光は強い
+
+  # ===== 三重県 =====
+  松阪市:        {prefecture: 三重県, population: 150688, rental_demand: true, tourism: true}   # 松阪牛、松坂城跡
+  伊賀市:        {prefecture: 三重県, population: 81871,  rental_demand: true, tourism: true}   # 伊賀上野城・忍者、名阪国道
+  名張市:        {prefecture: 三重県, population: 72036,  rental_demand: true, tourism: false}  # 大阪(近鉄)通勤圏のベッドタウン
+  大台町:        {prefecture: 三重県, population: 7794,   rental_demand: false, tourism: true}  # 大台ヶ原、ユネスコエコパーク
+
+  # ===== 奈良県 =====
+  五條市:        {prefecture: 奈良県, population: 25276, rental_demand: true,  tourism: true}   # 五條新町(重伝建)、大阪南部通勤圏
+  宇陀市:        {prefecture: 奈良県, population: 25233, rental_demand: true,  tourism: true}   # 大宇陀松山(重伝建)、奈良通勤圏
+  下市町:        {prefecture: 奈良県, population: 4108,  rental_demand: false, tourism: false, aliases: [下市]}  # → 警告対象
+  十津川村:      {prefecture: 奈良県, population: 2593,  rental_demand: false, tourism: true}   # 十津川温泉、谷瀬の吊り橋、日本一広い村
+  東吉野村:      {prefecture: 奈良県, population: 1281,  rental_demand: false, tourism: false}  # → 警告対象
+
+  # ===== 滋賀県 =====
+  甲賀市:        {prefecture: 滋賀県, population: 84982, rental_demand: true, tourism: true}    # 甲賀忍者・信楽焼、名神/新名神
+  高島市:        {prefecture: 滋賀県, population: 43130, rental_demand: true, tourism: true}    # 京都通勤圏(湖西線)、メタセコイア並木
+
+  # ===== 和歌山県 =====
+  橋本市:        {prefecture: 和歌山県, population: 56820, rental_demand: true, tourism: true}  # 大阪(南海)通勤圏、高野山麓
+
+  # ===== 徳島県 =====
+  三好市:        {prefecture: 徳島県, population: 20549, rental_demand: false, tourism: true}   # 祖谷渓・かずら橋、大歩危
+
+  # ===== 高知県 =====
+  本山町:        {prefecture: 高知県, population: 3022, rental_demand: false, tourism: false}   # 嶺北・土佐れいほく材 → 警告対象
