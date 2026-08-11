@@ -146,6 +146,35 @@ def test_extracts_json_with_surrounding_text(monkeypatch, cfg):
     assert data == {"verdict": "警告"}
 
 
+def test_truncated_json_is_salvaged():
+    """出力上限で応答が尻切れでも、完成しているキーだけ救出する (実際に発生した障害)。"""
+    got = llm._extract_json('{"bath":"使用可","lifeline":"浄化槽","park')
+    assert got == {"bath": "使用可", "lifeline": "浄化槽"}
+
+
+def test_truncated_json_single_key():
+    assert llm._extract_json('{"bath":"不明","lifeline') == {"bath": "不明"}
+
+
+def test_broken_json_without_any_pair_raises():
+    with pytest.raises(llm.LLMError):
+        llm._extract_json("{壊れていて救出できない")
+
+
+def test_salvaged_response_still_clamped(monkeypatch, cfg):
+    """救出した部分データも許容値に丸められ、欠けた項目は「不明」になる。"""
+    monkeypatch.setenv("GEMINI_API_KEY", "dummy")
+    resp = _Resp(200, {"candidates": [{"content": {"parts": [
+        {"text": '{"toilet":"洋式","bath":"使用可","lifel'}]}}]})
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: resp)
+    row = {"title": "t", "price": 1, "address": "a",
+           "area_land": None, "area_building": None, "body": "b"}
+    result, _ = resale_ai.assess_property(row, cfg=cfg)
+    assert result["toilet"] == "洋式"
+    assert result["lifeline"] == "不明"      # 切れた項目は不明
+    assert result["verdict"] == "検討可"      # 欠けた verdict は既定値
+
+
 def test_empty_candidates_is_error(monkeypatch, cfg):
     """safety block 等で candidates が空でも落ちずに LLMError にする。"""
     monkeypatch.setenv("GEMINI_API_KEY", "dummy")

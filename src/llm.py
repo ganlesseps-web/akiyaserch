@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -100,11 +101,27 @@ def _gemini_api_key() -> str:
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    """応答から JSON を取り出す。前後にゴミがあっても {...} を拾う。"""
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
+    """応答から JSON を取り出す。前後にゴミがあっても {...} を拾う。
+
+    出力トークン上限などで応答が途中で切れた場合 ('{"a":"x","b' で終わる等) は、
+    そこまでに完成しているキーだけを救出する (1件まるごと失敗させない)。
+    """
+    start = text.find("{")
+    if start == -1:
         raise LLMError(f"応答に JSON がありません: {text[:200]}")
-    return json.loads(text[start:end + 1])
+    end = text.rfind("}")
+    if end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass  # 閉じ括弧はあるが壊れている → 下の救出処理へ
+
+    # 尻切れの救出: 完成している "key": "value" ペアだけ拾って組み立てる
+    salvaged = dict(re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', text[start:]))
+    if salvaged:
+        logger.warning("応答が途中で切れたため部分的に復元しました (%d項目)", len(salvaged))
+        return salvaged
+    raise LLMError(f"応答の JSON が壊れています: {text[:200]}")
 
 
 def _call_gemini(
