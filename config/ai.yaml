@@ -22,11 +22,15 @@ provider: gemini
 #   gemini-3.1-flash-lite  … 上が枯れたときの2番手 (GA 2026-05-07)
 #   gemini-2.5-flash-lite  … さらに予備 (旧世代)
 #   gemini-3.5-flash / gemini-3.6-flash … 精度は高いが無料枠は少なめ。最後の保険。
+# 2026-08-11: 1日で373件処理したところ4モデルとも日次枠を使い切ったため、
+# 無料枠のあるモデルを追加して1日に使える総量を増やした(枠はモデルごとに別勘定)。
 models:
   - gemini-3.5-flash-lite
   - gemini-3.1-flash-lite
   - gemini-2.5-flash-lite
+  - gemini-3.6-flash
   - gemini-3.5-flash
+  - gemini-2.5-flash
 
 # 1リクエストごとの待機秒。
 # 2026-08-11 実測: 1.5秒だと1番目のモデルで429が多発(250件中135回)したため 2.5 に。

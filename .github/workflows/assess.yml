@@ -5,7 +5,9 @@ name: assess
 # ので、キーを設定するまでは何も起きない (score.yml と同じ寛容な設計)。
 on:
   schedule:
+    # 1日2回。無料枠は日次でリセットされるので、時間を離して2回引く。
     - cron: '30 22 * * *'   # 22:30 UTC = 07:30 JST (scrape の約1時間半後)
+    - cron: '0 9 * * *'     # 09:00 UTC = 18:00 JST (米国太平洋時間の日付変更直後を狙う)
   workflow_dispatch: {}
 
 concurrency:
