@@ -21,11 +21,11 @@ jobs:
       - name: Verify secrets
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           missing=""
           [ -z "$TURSO_DATABASE_URL" ] && missing="$missing TURSO_DATABASE_URL"
-          [ -z "$ANTHROPIC_API_KEY" ] && missing="$missing ANTHROPIC_API_KEY"
+          [ -z "$GEMINI_API_KEY" ] && missing="$missing GEMINI_API_KEY"
           if [ -n "$missing" ]; then
             echo "::warning::Skipping AI scoring (missing:$missing). Configure in repo Secrets to enable."
             exit 0
@@ -37,12 +37,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install with AI extras
-        run: pip install -e ".[ai]"
+      - name: Install
+        run: pip install -e .
 
       - name: Run scoring
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -m src.cli score --limit 50

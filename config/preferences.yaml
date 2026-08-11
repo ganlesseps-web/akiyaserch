@@ -22,5 +22,6 @@ description: |
 # 再開する時は 6 程度に戻す + score.yml の schedule を有効化。
 score_threshold: 0
 
-# 利用するモデル (Haiku 4.5 = 速くて安い、Sonnet 4.6 = 精度高い)
-model: claude-haiku-4-5-20251001
+# 利用するモデルは config/ai.yaml で設定します (既定: Gemini の無料枠)。
+# ここの値は ai_scores テーブルへの記録用のラベルとしてのみ使われます。
+model: "(config/ai.yaml)"

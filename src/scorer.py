@@ -1,7 +1,8 @@
-"""AI スコアリング: Claude (Haiku) に物件を好み基準で 0-10 採点させる.
+"""AI スコアリング: 物件を好み基準で 0-10 採点させる.
 
 config/preferences.yaml の `description` を system prompt に、物件情報を user message に。
-出力は JSON {"score": int, "reason": str} を厳密に強制 (tool_use 形式)。
+出力は JSON {"score": int, "reason": str} を構造化出力で強制。
+モデルは config/ai.yaml (既定: Gemini の無料枠)。
 
 スコア + reason + preferences_hash を `ai_scores` テーブルにキャッシュ。
 preferences が変わった (hash 違い) 物件は再採点される。
@@ -9,20 +10,20 @@ preferences が変わった (hash 違い) 物件は再採点される。
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import yaml
+
+from . import llm
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PREFERENCES_PATH = Path("config/preferences.yaml")
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+# モデルは config/ai.yaml (src/llm.py) 側で決まる。ここは後方互換のための表示用。
+DEFAULT_MODEL = "(config/ai.yaml)"
 
 
 @dataclass
@@ -81,27 +82,30 @@ def _format_property(row: sqlite3.Row) -> str:
     return "\n".join(parts)
 
 
+SCORE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "score": {"type": "INTEGER"},
+        "reason": {"type": "STRING"},
+    },
+    "required": ["score", "reason"],
+}
+
+
 def score_property(row: sqlite3.Row, cfg: PreferenceConfig) -> tuple[int, str]:
-    """Claude API で 1物件を採点。(score, reason) を返す。"""
-    import anthropic  # late import to keep base install light when not used
+    """1物件を採点。(score, reason) を返す。
 
-    client = anthropic.Anthropic()  # uses ANTHROPIC_API_KEY env var
-    msg = client.messages.create(
-        model=cfg.model,
-        max_tokens=200,
-        system=SYSTEM_PROMPT.format(preferences=cfg.description),
-        messages=[{"role": "user", "content": _format_property(row)}],
+    既定では Gemini の無料枠を使う (src/llm.py, config/ai.yaml)。
+    """
+    data, _model = llm.generate_json(
+        SYSTEM_PROMPT.format(preferences=cfg.description),
+        _format_property(row),
+        schema=SCORE_SCHEMA,
     )
-
-    text = "".join(b.text for b in msg.content if hasattr(b, "text")).strip()
-
-    # JSON 部分のみ抽出 (前後にゴミがあっても拾えるよう {...} を探す)
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"no JSON in response: {text[:200]}")
-    data = json.loads(text[start: end + 1])
-    score = int(data["score"])
+    try:
+        score = int(data["score"])
+    except (KeyError, TypeError, ValueError) as e:
+        raise ValueError(f"score が取得できません: {str(data)[:200]}") from e
     reason = str(data.get("reason") or "").strip()[:120]
     return max(0, min(10, score)), reason
 
@@ -132,8 +136,11 @@ def score_unscored(
     if not rows:
         return stats
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
+    if not llm.api_key_present():
+        raise llm.NoAPIKey(
+            "AI のAPIキーが未設定です (既定は GEMINI_API_KEY)。"
+            " https://aistudio.google.com/apikey で取得できます。"
+        )
 
     now = __import__("src.db", fromlist=["now_iso"]).now_iso()
     for row in rows:

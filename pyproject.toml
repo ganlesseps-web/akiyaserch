@@ -21,7 +21,10 @@ dependencies = [
 
 [project.optional-dependencies]
 maps = ["googlemaps>=4.10"]
-ai = ["anthropic>=0.40"]
+# Gemini は httpx(コア依存)で REST を叩くため追加依存なし。
+# claude を使いたい場合のみ anthropic を入れる (課金される)。
+ai = []
+claude = ["anthropic>=0.40"]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.7"]
 
 [project.scripts]

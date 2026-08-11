@@ -92,11 +92,15 @@ def web(host: str, port: int) -> None:
 @cli.command()
 @click.option("--limit", default=100, type=int, help="一度にスコア付与する最大件数")
 def score(limit: int) -> None:
-    """AI で未スコア物件をスコア付け (preferences.yaml を基準に Claude 採点)。"""
-    from . import scorer
+    """AI で未スコア物件をスコア付け (preferences.yaml 基準。既定は Gemini 無料枠)。"""
+    from . import llm, scorer
     cfg = scorer.PreferenceConfig.load()
-    with db.connect() as conn:
-        stats = scorer.score_unscored(conn, cfg, limit=limit)
+    try:
+        with db.connect() as conn:
+            stats = scorer.score_unscored(conn, cfg, limit=limit)
+    except llm.NoAPIKey as e:
+        click.echo(f"スキップしました: {e}", err=True)
+        return
     click.echo(f"target={stats['target']} scored={stats['scored']} failed={stats['failed']}")
 
 
@@ -153,14 +157,19 @@ def reclassify() -> None:
 @cli.command()
 @click.option("--limit", default=50, type=int, help="一度に判定する最大件数")
 def assess(limit: int) -> None:
-    """再販目線の AI 構造化判定 (設備/ライフライン/空き家期間を Claude で推定)。"""
-    from . import resale_ai
+    """再販目線の AI 構造化判定 (設備/ライフライン等を推定。既定は Gemini 無料枠)。"""
+    from . import llm, resale_ai
     db.init_db()
-    with db.connect() as conn:
-        stats = resale_ai.assess_unassessed(conn, limit=limit)
-    click.echo(
-        f"target={stats['target']} assessed={stats['assessed']} failed={stats['failed']}"
-    )
+    try:
+        with db.connect() as conn:
+            stats = resale_ai.assess_unassessed(conn, limit=limit)
+    except llm.NoAPIKey as e:
+        click.echo(f"スキップしました: {e}", err=True)
+        return
+    msg = f"target={stats['target']} assessed={stats['assessed']} failed={stats['failed']}"
+    if stats.get("quota_stopped"):
+        msg += " (無料枠を使い切ったため中断。残りは翌日の自動実行で続行します)"
+    click.echo(msg)
 
 
 @cli.group("launchd")

@@ -1,7 +1,7 @@
 name: assess
 
 # 再販目線の AI 構造化判定 (設備/ライフライン/空き家期間を Claude Haiku で推定)。
-# scrape (06:00 JST) の後に走らせる。ANTHROPIC_API_KEY が未設定なら黙って skip する
+# scrape (06:00 JST) の後に走らせる。GEMINI_API_KEY が未設定なら黙って skip する
 # ので、キーを設定するまでは何も起きない (score.yml と同じ寛容な設計)。
 on:
   schedule:
@@ -25,11 +25,11 @@ jobs:
       - name: Verify secrets
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           missing=""
           [ -z "$TURSO_DATABASE_URL" ] && missing="$missing TURSO_DATABASE_URL"
-          [ -z "$ANTHROPIC_API_KEY" ] && missing="$missing ANTHROPIC_API_KEY"
+          [ -z "$GEMINI_API_KEY" ] && missing="$missing GEMINI_API_KEY"
           if [ -n "$missing" ]; then
             echo "::warning::Skipping resale AI assessment (missing:$missing). Configure in repo Secrets to enable."
             exit 0
@@ -41,12 +41,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install with AI extras
-        run: pip install -e ".[ai]"
+      - name: Install
+        run: pip install -e .
 
       - name: Run resale assessment
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python -m src.cli assess --limit 80

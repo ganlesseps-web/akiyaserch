@@ -1,7 +1,9 @@
-"""再販目線の AI 構造化判定 (Claude Haiku)。
+"""再販目線の AI 構造化判定。
+
+モデルは config/ai.yaml で設定 (既定: Gemini の無料枠。Claude API の課金なし)。
 
 掲載本文は設備を書かないことが多く (「和式」明記は実測0件)、キーワード判定
-だけでは拾えない。そこで本文を Claude に読ませ、設備・ライフライン・空き家
+だけでは拾えない。そこで本文を LLM に読ませ、設備・ライフライン・空き家
 期間の手がかりを構造化して推定させる。
 
 重要な設計方針 (プロ壁打ちセッション15の合意):
@@ -14,12 +16,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from . import llm
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """あなたは日本の地方の中古住宅を「再販・賃貸・民泊」の出口で仕入れる
 プロのバイヤーの助手です。物件情報を読み、事実として書かれていることだけを構造化します。
@@ -57,6 +58,20 @@ _ALLOWED = {
     "verdict": {"検討可", "警告", "見送り"},
 }
 
+# Gemini の構造化出力 (generateContent の responseSchema)。
+# 型は大文字 (STRING/OBJECT) が公式ドキュメントの表記。enum で値を強制する。
+RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "OBJECT",
+    "properties": {
+        **{
+            key: {"type": "STRING", "enum": sorted(vals)}
+            for key, vals in _ALLOWED.items()
+        },
+        "reasons": {"type": "STRING"},
+    },
+    "required": [*sorted(_ALLOWED), "reasons"],
+}
+
 
 def prompt_hash() -> str:
     """判定仕様のハッシュ。SYSTEM_PROMPT を変えたら全件再判定される。"""
@@ -64,7 +79,7 @@ def prompt_hash() -> str:
 
 
 def format_property(row: Any) -> str:
-    """物件行を Claude に渡すテキストに整形 (scorer._format_property と同じ発想)。"""
+    """物件行を LLM に渡すテキストに整形 (scorer._format_property と同じ発想)。"""
     def get(key: str, default: Any = None) -> Any:
         try:
             return row[key]
@@ -85,13 +100,8 @@ def format_property(row: Any) -> str:
     return "\n".join(parts)
 
 
-def parse_response(text: str) -> dict[str, str]:
-    """Claude の応答から JSON を取り出し、値を許容集合に丸める。"""
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"no JSON in response: {text[:200]}")
-    data = json.loads(text[start:end + 1])
-
+def _clamp(data: dict[str, Any]) -> dict[str, str]:
+    """モデルの出力を許容集合に丸める (想定外の値が来ても壊れないように)。"""
     out: dict[str, str] = {}
     for key, allowed in _ALLOWED.items():
         v = str(data.get(key) or "").strip()
@@ -100,25 +110,37 @@ def parse_response(text: str) -> dict[str, str]:
     return out
 
 
-def assess_property(row: Any, model: str = DEFAULT_MODEL) -> dict[str, str]:
-    """1物件を Claude で構造化判定する。"""
-    import anthropic  # late import (未使用時に依存を要求しない)
+def parse_response(text: str) -> dict[str, str]:
+    """応答テキストから JSON を取り出し、値を許容集合に丸める。"""
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError(f"no JSON in response: {text[:200]}")
+    return _clamp(json.loads(text[start:end + 1]))
 
-    client = anthropic.Anthropic()  # ANTHROPIC_API_KEY を使用
-    msg = client.messages.create(
-        model=model,
-        max_tokens=400,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": format_property(row)}],
+
+def assess_property(row: Any, cfg: llm.LLMConfig | None = None) -> tuple[dict[str, str], str]:
+    """1物件を構造化判定する。Returns: (判定結果, 使ったモデル名)。
+
+    既定では Gemini の無料枠を使い、枠を使い切ったら次のモデルへ自動で切り替わる
+    (src/llm.py)。
+    """
+    data, used_model = llm.generate_json(
+        SYSTEM_PROMPT, format_property(row), schema=RESPONSE_SCHEMA, cfg=cfg
     )
-    text = "".join(b.text for b in msg.content if hasattr(b, "text")).strip()
-    return parse_response(text)
+    return _clamp(data), used_model
 
 
-def assess_unassessed(conn: Any, *, limit: int = 50, model: str = DEFAULT_MODEL) -> dict[str, int]:
-    """未判定 or 仕様が変わった物件を順に判定して resale_ai に保存する。"""
+def assess_unassessed(
+    conn: Any, *, limit: int = 50, cfg: llm.LLMConfig | None = None
+) -> dict[str, int]:
+    """未判定 or 仕様が変わった物件を順に判定して resale_ai に保存する。
+
+    無料枠を使い切った (全モデルが429) 場合はそこで打ち切り、判定済みの分は保存して
+    正常終了する。残りは翌日の自動実行が続きから処理する。
+    """
     from . import db
 
+    cfg = cfg or llm.LLMConfig.load()
     phash = prompt_hash()
     rows = conn.execute(
         """
@@ -133,16 +155,24 @@ def assess_unassessed(conn: Any, *, limit: int = 50, model: str = DEFAULT_MODEL)
         (phash, limit),
     ).fetchall()
 
-    stats = {"target": len(rows), "assessed": 0, "failed": 0}
+    stats = {"target": len(rows), "assessed": 0, "failed": 0, "quota_stopped": 0}
     if not rows:
         return stats
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
+    if not llm.api_key_present(cfg):
+        raise llm.NoAPIKey(
+            "Gemini の APIキーが未設定です (GEMINI_API_KEY)。"
+            " https://aistudio.google.com/apikey で取得できます。"
+        )
 
     now = db.now_iso()
     for row in rows:
         try:
-            r = assess_property(row, model=model)
+            r, used_model = assess_property(row, cfg=cfg)
+        except llm.QuotaExceeded as e:
+            # 全モデルの無料枠切れ → ここで打ち切り (翌日の自動実行が続きをやる)
+            logger.warning("無料枠を使い切ったため中断: %s", e)
+            stats["quota_stopped"] = 1
+            break
         except Exception as e:  # noqa: BLE001 - 1件の失敗で全体を止めない
             logger.warning("assess failed for property %s: %s", row["id"], e)
             stats["failed"] += 1
@@ -155,7 +185,7 @@ def assess_unassessed(conn: Any, *, limit: int = 50, model: str = DEFAULT_MODEL)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (row["id"], r["verdict"], r["toilet"], r["bath"], r["lifeline"],
-             r["parking"], r["vacancy_hint"], r["reasons"], phash, model, now),
+             r["parking"], r["vacancy_hint"], r["reasons"], phash, used_model, now),
         )
         stats["assessed"] += 1
         logger.info("assessed %s → %s (%s)", row["id"], r["verdict"], r["reasons"][:30])
