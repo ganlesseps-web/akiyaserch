@@ -1638,7 +1638,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-ai = [
+claude = [
     { name = "anthropic" },
 ]
 dev = [
@@ -1652,7 +1652,7 @@ maps = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40" },
+    { name = "anthropic", marker = "extra == 'claude'", specifier = ">=0.40" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "click", specifier = ">=8.1" },
     { name = "fastapi", specifier = ">=0.115" },
@@ -1671,7 +1671,7 @@ requires-dist = [
     { name = "truststore", specifier = ">=0.10.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
-provides-extras = ["maps", "ai", "dev"]
+provides-extras = ["maps", "ai", "claude", "dev"]
 
 [[package]]
 name = "truststore"
