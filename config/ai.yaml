@@ -1,0 +1,37 @@
+# AI 判定に使うモデルの設定
+#
+# 既定は Google Gemini の【無料枠】を使う (Claude API の課金を避けるため)。
+# APIキーの取得: https://aistudio.google.com/apikey
+# 環境変数 GEMINI_API_KEY に入れる (GitHub Secrets に登録すれば自動実行でも使われる)。
+#
+# 【重要・無料枠の注意】
+# Gemini の無料枠に送ったデータは Google の製品改善(学習)に使われる規約です。
+# 本システムが送るのは「公開されている物件の掲載文・住所・価格」だけなので実害は
+# 小さいですが、個人情報を送らない方針は維持すること。
+# (有料枠にすると学習に使われなくなります: https://ai.google.dev/gemini-api/terms)
+
+# provider: gemini (無料枠・既定) / claude (課金される)
+provider: gemini
+
+# 使うモデルを上から順に試す。
+# 無料枠を使い切って 429 が返ったら、自動で次のモデルに切り替わる。
+# = 複数モデルの無料枠を「たし算」して使える仕組み。
+#
+# 2026-08 時点で無料枠があると確認できたモデル (公式 pricing ページ):
+#   gemini-3.5-flash-lite  … 最安・最速。第一候補 (GA 2026-07-21)
+#   gemini-3.1-flash-lite  … 上が枯れたときの2番手 (GA 2026-05-07)
+#   gemini-2.5-flash-lite  … さらに予備 (旧世代)
+#   gemini-3.5-flash / gemini-3.6-flash … 精度は高いが無料枠は少なめ。最後の保険。
+models:
+  - gemini-3.5-flash-lite
+  - gemini-3.1-flash-lite
+  - gemini-2.5-flash-lite
+  - gemini-3.5-flash
+
+# 1リクエストごとの待機秒。無料枠は1分あたりの回数制限が厳しいので少し待つ。
+# (実際の上限は https://aistudio.google.com/rate-limit で自分のアカウントを確認)
+request_interval_seconds: 4.0
+
+max_output_tokens: 512
+temperature: 0.0
+timeout_seconds: 60
