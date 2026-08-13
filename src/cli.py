@@ -8,7 +8,7 @@ import sys
 import click
 from dotenv import load_dotenv
 
-from . import db, filter as flt, normalize
+from . import db, filter as flt, normalize, purge as purge_rules
 from .scrapers import REGISTRY
 from .scrapers.base import make_client
 
@@ -49,10 +49,14 @@ def scrape(source: str | None) -> None:
                 click.echo(f"unknown source: {name}", err=True)
                 sys.exit(2)
             scraper = REGISTRY[name]()
-            stats = {"raw": 0, "new": 0, "updated": 0}
+            stats = {"raw": 0, "new": 0, "updated": 0, "skipped": 0}
             for raw in scraper.fetch(client):
                 stats["raw"] += 1
                 listing = normalize.normalize(raw)
+                # 土地だけ / 300万円以上 は DB に入れない (purge と同じルール)
+                if purge_rules.should_skip(listing):
+                    stats["skipped"] += 1
+                    continue
                 _pid, is_new = db.upsert_listing(conn, listing)
                 if is_new:
                     stats["new"] += 1
@@ -61,7 +65,9 @@ def scrape(source: str | None) -> None:
             summary[name] = stats
             log.info("%s: %s", name, stats)
     for name, s in summary.items():
-        click.echo(f"{name}: raw={s['raw']} new={s['new']} updated={s['updated']}")
+        click.echo(
+            f"{name}: raw={s['raw']} new={s['new']} updated={s['updated']} skipped={s['skipped']}"
+        )
 
 
 @cli.command()
@@ -152,6 +158,35 @@ def reclassify() -> None:
         f"dilapidated={dilap_count}, move_in_ready={ready_count}, needs_repair={repair_count}, "
         f"resale_ng={ng_count}, with_warnings={warn_count}"
     )
+
+
+@cli.command("purge")
+@click.option("--apply", "do_apply", is_flag=True,
+              help="実際に削除する (付けなければ件数を数えるだけの下見)")
+@click.option("--yes", is_flag=True, help="確認の質問を省略する (自動実行用)")
+@click.option("--price-max", default=purge_rules.PRICE_CUTOFF_YEN, type=int, show_default=True,
+              help="この金額以上の物件を削除対象にする (円)")
+@click.option("--include-rated", is_flag=True, help="星評価済みの物件も削除対象にする")
+def purge_cmd(do_apply: bool, yes: bool, price_max: int, include_rated: bool) -> None:
+    """土地だけの物件と300万円以上の物件をDBから削除する (既定は下見のみ)。"""
+    db.init_db()  # 本番にテーブルが無い状態でも落ちないように
+    keep_rated = not include_rated
+    with db.connect() as conn:
+        stats = purge_rules.count_targets(conn, price_cutoff=price_max, keep_rated=keep_rated)
+        click.echo(purge_rules.render_report(stats, applied=False))
+        if not do_apply:
+            click.echo("\n※ まだ何も削除していません。実際に消すには --apply を付けてください。")
+            return
+        if stats["total"] == 0:
+            click.echo("\n削除対象がありません。")
+            return
+        if not yes and not click.confirm(
+            f"\n本当に {stats['total']} 件を削除しますか？ (元に戻せません)", default=False
+        ):
+            click.echo("中止しました。")
+            return
+        purge_rules.purge(conn, price_cutoff=price_max, keep_rated=keep_rated)
+        click.echo(f"\n削除しました: 物件 {stats['total']} 件 + 関連データ")
 
 
 @cli.command()
