@@ -89,6 +89,10 @@ exclude_needs_repair: true
 #   修繕や価格交渉で救えるうえ、掲載に書かれないことが多く機械除外は誤爆するため。
 exclude_resale_ng: true
 
+# True にすると AI が「見送り」と判定した物件を通知しない。
+# ダッシュボード一覧でも隠れる (確認用の「🚫見送り」タブでのみ見られる)。
+exclude_ai_skipped: true
+
 # 市町村 blacklist: 海沿いで塩害・シロアリ・湿気で家が傷みやすい自治体を丸ごと除外。
 # (city フィールドは normalize._extract_city が「太地町」「串本町」「○○市」を抽出)
 # allowlist された府県内であっても、ここに載っている市町村は通知対象外になる。

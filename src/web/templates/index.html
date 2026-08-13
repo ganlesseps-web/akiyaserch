@@ -43,6 +43,11 @@
                  background: #e6f8ee; color: #1e8e4e; font-weight: 700; white-space: nowrap; }
   .drop-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem;
                 background: #fdece0; color: #c2560d; font-weight: 700; white-space: nowrap; }
+  .verdict-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem;
+                   font-weight: 700; white-space: nowrap; }
+  .verdict-badge.v-ok   { background: #e8f4ff; color: #1b5e9c; }
+  .verdict-badge.v-warn { background: #fff6e0; color: #8a6100; }
+  .verdict-badge.v-ng   { background: #fdeaea; color: #a32020; }
   .warn-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
   .warn-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
                background: #fff6e0; color: #8a6100; border: 1px solid #f0dfae; white-space: nowrap; }
@@ -75,8 +80,8 @@
   {% for v, label in [
       ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
-      ("house","🏠一軒家のみ"),("land","🏞️土地のみ"),("apartment","🏢マンション")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
+      ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)")] %}
+    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
@@ -96,6 +101,12 @@
     {% endfor %}
   </select>
   {% endif %}
+  <select name="verdict" onchange="this.form.submit()" title="AI判定でしぼり込む">
+    <option value="">🤖 AI判定: すべて</option>
+    {% for v, label in verdict_options %}
+      <option value="{{v}}" {% if v == verdict %}selected{% endif %}>{{label}}</option>
+    {% endfor %}
+  </select>
   <select name="sort" onchange="this.form.submit()" title="並べ替え">
     {% for s, label in sort_options %}
       <option value="{{s}}" {% if s == sort %}selected{% endif %}>{{label}}</option>
@@ -103,19 +114,19 @@
   </select>
   <select name="price_min" onchange="this.form.submit()" title="価格の下限">
     <option value="">下限なし</option>
-    {% for v, label in [("50","50万〜"),("100","100万〜"),("200","200万〜"),("300","300万〜"),("500","500万〜")] %}
+    {% for v, label in [("50","50万〜"),("100","100万〜"),("150","150万〜"),("200","200万〜"),("250","250万〜")] %}
       <option value="{{v}}" {% if price_min == v %}selected{% endif %}>{{label}}</option>
     {% endfor %}
   </select>
   <select name="price_max" onchange="this.form.submit()" title="価格の上限">
     <option value="">上限なし</option>
-    {% for v, label in [("50","〜50万"),("100","〜100万"),("200","〜200万"),("300","〜300万"),("500","〜500万"),("1000","〜1000万")] %}
+    {% for v, label in [("50","〜50万"),("100","〜100万"),("150","〜150万"),("200","〜200万"),("250","〜250万"),("300","〜300万")] %}
       <option value="{{v}}" {% if price_max == v %}selected{% endif %}>{{label}}</option>
     {% endfor %}
   </select>
   <input type="text" name="q" placeholder="🔍 住所/タイトル検索" value="{{q}}" autocomplete="off">
   <button type="submit" style="padding:0.4rem 0.9rem;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;">検索</button>
-  {% if q or pref or city or price_min or price_max %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
+  {% if q or pref or city or price_min or price_max or verdict %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
 </form>
 
 {% if rows %}
@@ -144,6 +155,7 @@
       ／ {{ r['prefecture'] or '?' }} {{ r['city'] or '' }}
       {% if r['area_land'] %}／ 土地 {{ "%.0f"|format(r['area_land']) }}㎡{% endif %}
       {% if r['move_in_ready'] %}／ <span class="ready-badge" title="{{ r['move_in_ready_reason'] or '' }}">✨即入居OK</span>{% endif %}
+      {% if r['ai_verdict'] %}／ <span class="verdict-badge v-{{ 'ok' if r['ai_verdict']=='検討可' else ('warn' if r['ai_verdict']=='警告' else 'ng') }}" title="{{ r['ai_verdict_reason'] or '' }}">{{ '✅' if r['ai_verdict']=='検討可' else ('⚠️' if r['ai_verdict']=='警告' else '🚫') }}{{ r['ai_verdict'] }}</span>{% endif %}
       {% if r['drop_new_price'] is not none and r['drop_old_price'] is not none and r['drop_new_price'] < r['drop_old_price'] %}／ <span class="drop-badge" title="値下がりしました">🔻値下げ {{ fmt_price(r['drop_old_price']) }}→{{ fmt_price(r['drop_new_price']) }}</span>{% endif %}
       {% if r['ai_score'] is not none %}
         ／ <span class="score-badge" data-score="{{r['ai_score']}}">

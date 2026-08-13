@@ -81,7 +81,24 @@ def auth(credentials: HTTPBasicCredentials | None = Depends(_security)) -> None:
         )
 
 
+# AI判定の値。SQL に文字列を埋める箇所があるのでホワイトリストで固定する。
+VERDICTS = ("検討可", "警告", "見送り")
+
+# 「見送り」を一覧から外す条件。NOT EXISTS で書くのが必須:
+# `(SELECT verdict ...) != '見送り'` の形だと、AI未判定 (NULL) の物件まで消えてしまう。
+SKIPPED_EXCLUSION = (
+    " AND NOT EXISTS (SELECT 1 FROM resale_ai r"
+    " WHERE r.property_id = p.id AND r.verdict = '見送り')"
+)
+
+# 判定の良い順 (検討可 → 警告 → 未判定 → 見送り)
+_VERDICT_RANK = (
+    "(CASE (SELECT verdict FROM resale_ai r WHERE r.property_id = p.id)"
+    " WHEN '検討可' THEN 0 WHEN '警告' THEN 1 WHEN '見送り' THEN 3 ELSE 2 END)"
+)
+
 SORT_OPTIONS = {
+    "verdict_best": f"{_VERDICT_RANK} ASC, p.first_seen_at DESC",
     "new": "p.first_seen_at DESC",
     "price_asc": "(p.price IS NULL) ASC, p.price ASC, p.first_seen_at DESC",
     "price_desc": "(p.price IS NULL) ASC, p.price DESC, p.first_seen_at DESC",
@@ -103,6 +120,7 @@ def _query_rows(
     city: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
+    verdict: str | None = None,
     limit: int = 200,
 ) -> list[Any]:
     base = """
@@ -156,6 +174,14 @@ def _query_rows(
             " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
+    elif view == "skipped":
+        # 「🚫見送り」: 通常は一覧から隠しているものを確認するための逃げ道タブ。
+        # AI の誤判定を人間が覆せるように、見られる場所は残しておく。
+        base += (
+            " AND EXISTS (SELECT 1 FROM resale_ai r"
+            "             WHERE r.property_id = p.id AND r.verdict = '見送り')"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        )
     elif view == "free":
         # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
         # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
@@ -169,11 +195,15 @@ def _query_rows(
     # 「住める空き家だけ」: 発見系ビューでは“住めない物件”(dilapidated) と
     # “修繕が必要と明記された物件”(needs_repair) を隠す。お気に入り/通知済み/
     # 評価済み/却下 はユーザーが明示的に作った一覧なのでそのまま全件表示する。
-    if view not in ("favorites", "notified", "dismissed", "rated"):
+    if view not in ("favorites", "notified", "dismissed", "rated", "skipped"):
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         # 再販ハード除外 (再建築不可/借地/共有持分/井戸のみ/浸水3m超 等)
         base += " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
+        # AI が「見送り」と判定した物件は一覧に出さない (データは残す)。
+        # ※ NOT EXISTS で書くこと。`verdict != '見送り'` と書くと NULL 比較が偽になり、
+        #   AI未判定の物件まで丸ごと消える。
+        base += SKIPPED_EXCLUSION
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -199,6 +229,16 @@ def _query_rows(
         base += " AND p.price <= ?"
         params.append(price_max)
 
+    # AI判定でしぼる。値はホワイトリスト済みなので安全 (ユーザー入力を直接埋めない)
+    if verdict in VERDICTS:
+        base += (
+            " AND EXISTS (SELECT 1 FROM resale_ai r"
+            "             WHERE r.property_id = p.id AND r.verdict = ?)"
+        )
+        params.append(verdict)
+    elif verdict == "未判定":
+        base += " AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id)"
+
     if view == "pricedown":
         # 値下げタブは常に「値下がりが新しい順」で並べる (このタブの主役は値下げなので)。
         sort_sql = (
@@ -221,6 +261,7 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
+        + SKIPPED_EXCLUSION   # 見送りは一覧に出さない (件数も揃える)
     )
 
     def count(extra: str = "") -> int:
@@ -236,6 +277,12 @@ def _counts(conn: Any) -> dict[str, int]:
         "ready": count(" AND p.move_in_ready = 1" + live),
         "pricedown": count(
             " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)" + live
+        ),
+        # 見送りタブ: live には見送り除外が入っているので、ここは自前で条件を書く
+        "skipped": count(
+            " AND EXISTS (SELECT 1 FROM resale_ai r"
+            "             WHERE r.property_id = p.id AND r.verdict = '見送り')"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         ),
         "favorites": conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0],
         "notified": conn.execute(
@@ -304,10 +351,7 @@ def _warning_chips(row: Any) -> list[str]:
     if warn:
         chips.append(warn)
 
-    verdict = get("ai_verdict")
-    if verdict in ("見送り", "警告"):
-        reason = (get("ai_verdict_reason") or "").strip()
-        chips.append(f"AI:{verdict}" + (f" — {reason[:40]}" if reason else ""))
+    # AI判定は専用バッジで表示するので、ここでは重複させない
     return chips
 
 
@@ -350,6 +394,7 @@ def index(
     city: str | None = None,
     price_min: str | None = None,
     price_max: str | None = None,
+    verdict: str | None = None,
     _=Depends(auth),
 ) -> HTMLResponse:
     _ensure_schema()
@@ -360,6 +405,7 @@ def index(
             city=city or None,
             price_min=_man_to_yen(price_min),
             price_max=_man_to_yen(price_max),
+            verdict=verdict or None,
         )
         counts = _counts(conn)
         prefectures = _prefectures(conn)
@@ -371,10 +417,14 @@ def index(
             "rows": rows, "view": view, "sort": sort, "q": q or "",
             "pref": pref or "", "city": city or "",
             "price_min": price_min or "", "price_max": price_max or "",
+            "verdict": verdict or "",
+            "verdict_options": [("検討可", "✅検討可"), ("警告", "⚠️警告"),
+                                ("未判定", "AI未判定"), ("見送り", "🚫見送り")],
             "prefectures": prefectures, "cities": cities,
             "counts": counts,
             "sort_options": [
                 ("new", "新着順"),
+                ("verdict_best", "AI判定の良い順"),
                 ("price_asc", "安い順"),
                 ("price_desc", "高い順"),
                 ("area_desc", "広い順"),

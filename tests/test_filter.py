@@ -31,6 +31,7 @@ def cfg():
         exclude_dilapidated=False,
         exclude_needs_repair=False,
         exclude_resale_ng=False,
+        exclude_ai_skipped=False,
         city_blacklist=set(),
     )
 
@@ -127,5 +128,37 @@ def test_resale_warnings_do_not_block(conn, cfg):
     import dataclasses
     strict = dataclasses.replace(cfg, exclude_resale_ng=True)
     row = _insert(conn, price=1_000_000, resale_ng=0, resale_warnings="和式トイレ|汲み取り式")
+    ok, _ = flt.passes(conn, row, strict)
+    assert ok
+
+
+def test_exclude_ai_skipped_blocks(conn, cfg):
+    """AI が「見送り」と判定した物件は通知しない。"""
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_ai_skipped=True)
+    row = _insert(conn, price=1_000_000)
+    conn.execute(
+        "INSERT INTO resale_ai (property_id, verdict, prompt_hash, model, assessed_at)"
+        " VALUES (?,?,?,?,?)", (row["id"], "見送り", "h", "m", db.now_iso()))
+    ok, reason = flt.passes(conn, row, strict)
+    assert not ok and "見送り" in reason
+
+
+def test_ai_unassessed_still_notified(conn, cfg):
+    """AI未判定の物件は通知を止めない (NULL比較の罠の回帰テスト)。"""
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_ai_skipped=True)
+    row = _insert(conn, price=1_000_000)      # resale_ai に行なし
+    ok, _ = flt.passes(conn, row, strict)
+    assert ok
+
+
+def test_ai_ok_verdict_notified(conn, cfg):
+    import dataclasses
+    strict = dataclasses.replace(cfg, exclude_ai_skipped=True)
+    row = _insert(conn, price=1_000_000)
+    conn.execute(
+        "INSERT INTO resale_ai (property_id, verdict, prompt_hash, model, assessed_at)"
+        " VALUES (?,?,?,?,?)", (row["id"], "検討可", "h", "m", db.now_iso()))
     ok, _ = flt.passes(conn, row, strict)
     assert ok

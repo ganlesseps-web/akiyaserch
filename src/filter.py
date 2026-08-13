@@ -27,6 +27,7 @@ class FilterConfig:
     exclude_dilapidated: bool  # True なら is_dilapidated 判定された物件を通知対象から除外
     exclude_needs_repair: bool  # True なら needs_repair 判定された物件を通知対象から除外
     exclude_resale_ng: bool  # True なら再販ハード除外(再建築不可/借地/持分/井戸のみ 等)を除外
+    exclude_ai_skipped: bool  # True なら AI が「見送り」と判定した物件を通知しない
     city_blacklist: set[str]  # 海沿い等で家が傷みやすい市町村を丸ごと除外 (例: 太地町)
 
     @classmethod
@@ -57,6 +58,7 @@ class FilterConfig:
             exclude_dilapidated=bool(data.get("exclude_dilapidated", False)),
             exclude_needs_repair=bool(data.get("exclude_needs_repair", True)),
             exclude_resale_ng=bool(data.get("exclude_resale_ng", True)),
+            exclude_ai_skipped=bool(data.get("exclude_ai_skipped", True)),
             city_blacklist=set(data.get("city_blacklist") or []),
         )
 
@@ -127,6 +129,16 @@ def passes(
             except (KeyError, IndexError):
                 reason = None
             return False, f"resale_ng: {reason or 'flagged'}"
+
+    # AI が「見送り」と判定した物件は通知しない (ダッシュボード一覧と条件を揃える)。
+    # ※ row に列が無い経路があるので、DB を直接引く (NOT EXISTS 相当)。
+    if cfg.exclude_ai_skipped:
+        v = conn.execute(
+            "SELECT 1 FROM resale_ai WHERE property_id = ? AND verdict = '見送り'",
+            (row["id"],),
+        ).fetchone()
+        if v is not None:
+            return False, "ai_verdict: 見送り"
 
     pref = row["prefecture"]
     if pref is None:
