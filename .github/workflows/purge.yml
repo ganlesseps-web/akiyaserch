@@ -1,0 +1,57 @@
+name: purge
+
+# 土地だけの物件 / 300万円以上の物件を DB から削除する。
+# 既定は「下見」だけ。実際に消すには confirm 欄に DELETE と入力する必要がある
+# (誤って実行ボタンを押しても消えないようにするため)。
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '実際に削除する場合のみ DELETE と入力 (空欄なら件数を数えるだけ)'
+        required: false
+        default: ''
+
+concurrency:
+  group: purge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify secrets
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        run: |
+          if [ -z "$TURSO_DATABASE_URL" ]; then
+            echo "::error::TURSO_DATABASE_URL secret not set."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Dry run (下見)
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python -m src.cli purge
+
+      - name: Apply (confirm に DELETE と入力されたときだけ)
+        if: ${{ inputs.confirm == 'DELETE' }}
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python -m src.cli purge --apply --yes
