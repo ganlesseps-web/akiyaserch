@@ -216,3 +216,79 @@ def test_rakuen_details_merged_into_body(conn, monkeypatch):
     body = conn.execute("SELECT body FROM properties").fetchone()["body"]
     assert "築:1982年" in body           # 元の本文は残る
     assert "駐車場" in body and "下水道" in body
+
+
+# ---- みんなの0円物件: APIの登録日(posted_at)を写す。通信不要 ----
+
+def test_zero_estate_copies_posted_at(conn, monkeypatch):
+    _insert(conn, "960210", source="minna_0en", url="https://zero.estate/properties/960210",
+            posted_at="2026-08-19T03:35:06.000Z")
+
+    def _boom():
+        raise AssertionError("0円物件は通信してはいけない")
+    monkeypatch.setattr(enrich, "_client", _boom)
+    st = enrich.enrich_missing(conn)
+    assert st["zero"] == 1
+    assert conn.execute("SELECT listed_at FROM properties").fetchone()["listed_at"] == "2026-08-19"
+
+
+def test_zero_estate_ignores_broken_date(conn, monkeypatch):
+    _insert(conn, "x", source="minna_0en", url="https://zero.estate/properties/x",
+            posted_at="こわれた日付")
+    monkeypatch.setattr(enrich, "_client", lambda: (_ for _ in ()).throw(AssertionError()))
+    st = enrich.enrich_missing(conn)
+    assert st["zero"] == 0
+    assert conn.execute("SELECT listed_at FROM properties").fetchone()["listed_at"] is None
+
+
+# ---- 高梁市 / 甲州市: サイトのお知らせから 物件番号→登録日 ----
+
+TAKAHASHI_NEWS = (
+    "お知らせ 2026/08/19 イベント開催 2026/08/18 新規物件が登録されました No.754 "
+    "静かな山中 2026/08/04 新規物件が登録されました No.753 便利な立地"
+)
+KOSHU_TOP = "新着情報 2026年08月06日 No.160 山梨県甲州市 を新規登録しました 2026年07月31日 No.143 甲州市塩山"
+
+
+class _TextClient:
+    """_page_text が使う client のモック。"""
+    def __init__(self, text, stop_after=1):
+        self._text, self._n, self._stop = text, 0, stop_after
+
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+    def get(self, url):
+        self._n += 1
+        class _R:
+            status_code = 200 if self._n <= self._stop else 404
+            content = (self._text if self._n <= self._stop else "").encode("utf-8")
+        return _R()
+
+
+def test_takahashi_news_mapping(monkeypatch):
+    monkeypatch.setattr(enrich.time, "sleep", lambda s: None)
+    got = enrich.fetch_takahashi_dates(_TextClient(TAKAHASHI_NEWS))
+    assert got == {"754": "2026-08-18", "753": "2026-08-04"}   # イベント行は拾わない
+
+
+def test_koshu_news_mapping():
+    got = enrich.fetch_koshu_dates(_TextClient(KOSHU_TOP))
+    assert got["160"] == "2026-08-06" and got["143"] == "2026-07-31"
+
+
+def test_city_site_dates_applied(conn, monkeypatch):
+    _insert(conn, "754", source="takahashi_akiyabank",
+            url="https://takahashi-akiyabank.com/bank/754/")
+    _insert(conn, "999", source="takahashi_akiyabank",
+            url="https://takahashi-akiyabank.com/bank/999/")   # お知らせに無い = 古い物件
+    monkeypatch.setattr(enrich, "fetch_takahashi_dates", lambda c, **k: {"754": "2026-08-18"})
+    monkeypatch.setattr(enrich, "fetch_koshu_dates", lambda c: {})
+    monkeypatch.setattr(enrich, "_client", lambda: _TextClient(""))
+    monkeypatch.setattr(enrich.time, "sleep", lambda s: None)
+    st = enrich.enrich_missing(conn)
+    assert st["city"] == 1
+    rows = {r["listing_id"]: r["listed_at"]
+            for r in conn.execute("SELECT listing_id, listed_at FROM properties")}
+    assert rows["754"] == "2026-08-18"
+    assert rows["999"] is None        # 分からないものは埋めない (推測しない)

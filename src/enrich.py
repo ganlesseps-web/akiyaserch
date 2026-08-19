@@ -127,6 +127,54 @@ def parse_rakuen_details(html: bytes | str) -> str | None:
     return " | ".join(f"{k}:{v}" for k, v in found.items())
 
 
+# 高梁市の空き家バンクは詳細ページに日付が無いが、サイトの「お知らせ」に
+# 「2026/08/18 新規物件が登録されました No.754」という形で登録日が載る。
+# /news/ をページ送りして 物件番号→登録日 の対応表を作る (実測47件・2025-11まで遡れる)。
+_TAKAHASHI_NEWS = "https://takahashi-akiyabank.com/news/"
+_KOSHU_TOP = "https://www.city.koshu.yamanashi.jp/iju/akiya/"
+_NEWS_RE = re.compile(
+    r"(20\d{2})[/年](\d{1,2})[/月](\d{1,2})日?\s*新規物件が登録されました\s*No\.?\s*(\d+)"
+)
+# 甲州らいふ は「2026年08月06日 ... No.160」の形 (新着情報欄、直近のみ)
+_KOSHU_RE = re.compile(r"(20\d{2})年(\d{1,2})月(\d{1,2})日[^0-9]{0,26}No\.?\s*(\d+)")
+
+
+def _page_text(client: httpx.Client, url: str) -> str | None:
+    try:
+        r = client.get(url)
+        if r.status_code != 200:
+            return None
+        return re.sub(r"\s+", " ", BeautifulSoup(r.content, "lxml").get_text(" ", strip=True))
+    except httpx.HTTPError:
+        return None
+
+
+def fetch_takahashi_dates(client: httpx.Client, *, max_pages: int = 10) -> dict[str, str]:
+    """高梁市: お知らせを遡って {物件番号: 登録日} を作る。"""
+    out: dict[str, str] = {}
+    for pg in range(1, max_pages + 1):
+        url = _TAKAHASHI_NEWS if pg == 1 else f"{_TAKAHASHI_NEWS}page/{pg}/"
+        text = _page_text(client, url)
+        if text is None:
+            break
+        before = len(out)
+        for y, mo, d, no in _NEWS_RE.findall(text):
+            out.setdefault(no, f"{y}-{int(mo):02d}-{int(d):02d}")
+        time.sleep(INTER_REQUEST_SECONDS)
+        if len(out) == before:  # 新規が無くなったら終了
+            break
+    return out
+
+
+def fetch_koshu_dates(client: httpx.Client) -> dict[str, str]:
+    """甲州市: トップの新着情報から {物件番号: 登録日} を作る (直近のみ)。"""
+    text = _page_text(client, _KOSHU_TOP)
+    if not text:
+        return {}
+    return {no: f"{y}-{int(mo):02d}-{int(d):02d}"
+            for y, mo, d, no in _KOSHU_RE.findall(text)}
+
+
 def _client() -> httpx.Client:
     # akiya-athome は中間証明書を返さないため verify=False (既存 scraper と同じ理由)
     ssl.create_default_context()
@@ -147,7 +195,8 @@ def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    stats = {"target": 0, "found": 0, "no_date": 0, "failed": 0, "ieichiba": 0, "rakuen": 0}
+    stats = {"target": 0, "found": 0, "no_date": 0, "failed": 0,
+             "ieichiba": 0, "rakuen": 0, "zero": 0, "city": 0}
     now = db.now_iso()
 
     # --- 家いちば: 通信せずIDから年を入れる (先に済ませる = 一番安い) ---
@@ -165,6 +214,45 @@ def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
             )
             stats["ieichiba"] += 1
             stats["found"] += 1
+
+    # --- みんなの0円物件: APIの登録日(posted_at)を写すだけ。通信不要 ---
+    rows = conn.execute(
+        "SELECT id, posted_at FROM properties"
+        " WHERE status='active' AND listed_at IS NULL AND source='minna_0en'"
+        "   AND posted_at IS NOT NULL LIMIT ?",
+        (limit,),
+    ).fetchall()
+    for row in rows:
+        d = str(row["posted_at"])[:10]        # ISO日時 -> YYYY-MM-DD
+        if re.fullmatch(r"20\d{2}-\d{2}-\d{2}", d):
+            conn.execute(
+                "UPDATE properties SET listed_at = ?, enriched_at = ? WHERE id = ?",
+                (d, now, row["id"]),
+            )
+            stats["zero"] += 1
+            stats["found"] += 1
+
+    # --- 高梁市 / 甲州市: サイトのお知らせから 物件番号→登録日 を引く ---
+    for src, fetcher in (("takahashi_akiyabank", fetch_takahashi_dates),
+                         ("koshu_akiyabank", fetch_koshu_dates)):
+        pending = conn.execute(
+            "SELECT id, listing_id FROM properties"
+            " WHERE status='active' AND listed_at IS NULL AND source=? LIMIT ?",
+            (src, limit),
+        ).fetchall()
+        if not pending:
+            continue
+        with _client() as client:
+            table = fetcher(client)
+        for row in pending:
+            d = table.get(str(row["listing_id"]))
+            if d:
+                conn.execute(
+                    "UPDATE properties SET listed_at = ?, enriched_at = ? WHERE id = ?",
+                    (d, now, row["id"]),
+                )
+                stats["city"] += 1
+                stats["found"] += 1
 
     # --- 通信が必要なもの (アットホーム系 / 楽園信州) ---
     rows = conn.execute(

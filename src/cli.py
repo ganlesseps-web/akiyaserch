@@ -169,7 +169,9 @@ def enrich(limit: int) -> None:
     with db.connect() as conn:
         st = en.enrich_missing(conn, limit=limit)
     click.echo(
-        f"target={st['target']} 掲載日あり={st['found']} 日付なし={st['no_date']} 失敗={st['failed']}"
+        f"掲載日あり={st['found']} (家いちば{st['ieichiba']} / 0円{st['zero']} / "
+        f"市サイト{st['city']}) 楽園補完={st['rakuen']} "
+        f"日付なし={st['no_date']} 失敗={st['failed']}"
     )
 
 
