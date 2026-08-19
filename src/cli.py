@@ -173,6 +173,40 @@ def enrich(limit: int) -> None:
     )
 
 
+@cli.command()
+def stats() -> None:
+    """今ダッシュボードに何が入っているかを表示する (削除も変更もしない)。"""
+    from .web import app as webapp
+    db.init_db()
+    with db.connect() as conn:
+        q = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
+        A = "status='active'"
+        total = q(f"SELECT COUNT(*) FROM properties WHERE {A}")
+        counts = webapp._counts(conn)
+        dated = q(f"SELECT COUNT(*) FROM properties WHERE {A} AND listed_at IS NOT NULL")
+        over5 = q(f"SELECT COUNT(*) FROM properties WHERE {A} AND listed_at IS NOT NULL"
+                  f" AND listed_at <= date('now','-5 years')")
+        y3to5 = q(f"SELECT COUNT(*) FROM properties WHERE {A} AND listed_at IS NOT NULL"
+                  f" AND listed_at <= date('now','-3 years')"
+                  f" AND listed_at > date('now','-5 years')")
+        assessed = q("SELECT COUNT(*) FROM resale_ai")
+
+    where = "Turso (本番)" if db.using_libsql() else f"ローカル ({db.db_path()})"
+    click.echo(f"接続先                : {where}")
+    click.echo(f"物件の総数            : {total:>5} 件")
+    click.echo("")
+    click.echo(f"ダッシュボード表示数  : {counts['all']:>5} 件  ← 実際に見える数")
+    click.echo(f"  ✨即入居OK          : {counts['ready']:>5} 件")
+    click.echo(f"  🔻値下げ            : {counts['pricedown']:>5} 件")
+    click.echo(f"  🆓0円物件           : {counts['free']:>5} 件")
+    click.echo(f"  🚫見送り(確認用タブ): {counts['skipped']:>5} 件  ← 一覧からは隠れている")
+    click.echo("")
+    click.echo(f"掲載日を取得できた数  : {dated:>5} 件 / {total} 件")
+    click.echo(f"  掲載5年超(一覧から除外): {over5:>3} 件")
+    click.echo(f"  掲載3〜5年(⚠️警告のみ) : {y3to5:>3} 件")
+    click.echo(f"AI判定済み            : {assessed:>5} 件")
+
+
 @cli.command("purge")
 @click.option("--apply", "do_apply", is_flag=True,
               help="実際に削除する (付けなければ件数を数えるだけの下見)")
