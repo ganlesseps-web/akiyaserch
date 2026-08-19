@@ -160,6 +160,19 @@ def reclassify() -> None:
     )
 
 
+@cli.command()
+@click.option("--limit", default=200, type=int, help="一度に見に行く最大件数")
+def enrich(limit: int) -> None:
+    """詳細ページから掲載開始日(情報公開日)を取得する。未取得の物件だけ1回だけ見に行く。"""
+    from . import enrich as en
+    db.init_db()
+    with db.connect() as conn:
+        st = en.enrich_missing(conn, limit=limit)
+    click.echo(
+        f"target={st['target']} 掲載日あり={st['found']} 日付なし={st['no_date']} 失敗={st['failed']}"
+    )
+
+
 @cli.command("purge")
 @click.option("--apply", "do_apply", is_flag=True,
               help="実際に削除する (付けなければ件数を数えるだけの下見)")

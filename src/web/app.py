@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import db, municipalities
+from .. import db, enrich, municipalities
 
 app = FastAPI(title="trade dashboard")
 
@@ -89,6 +89,14 @@ VERDICTS = ("検討可", "警告", "見送り")
 SKIPPED_EXCLUSION = (
     " AND NOT EXISTS (SELECT 1 FROM resale_ai r"
     " WHERE r.property_id = p.id AND r.verdict = '見送り')"
+)
+
+# 掲載から5年超の物件を一覧から外す条件。
+# date() は SQLite/libsql 共通で使える。listed_at が NULL なら比較は NULL = 偽に
+# ならず「条件に該当しない」= 残る (IS NULL を明示しているため安全)。
+STALE_YEARS = 5
+STALE_EXCLUSION = (
+    f" AND (p.listed_at IS NULL OR p.listed_at > date('now', '-{STALE_YEARS} years'))"
 )
 
 # 判定の良い順 (検討可 → 警告 → 未判定 → 見送り)
@@ -204,6 +212,9 @@ def _query_rows(
         # ※ NOT EXISTS で書くこと。`verdict != '見送り'` と書くと NULL 比較が偽になり、
         #   AI未判定の物件まで丸ごと消える。
         base += SKIPPED_EXCLUSION
+        # 掲載から5年超の長期売れ残りは一覧に出さない (ユーザー指定の除外条件)。
+        # listed_at が NULL (未取得) の物件は除外しない = デフォルト通過。
+        base += STALE_EXCLUSION
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -262,6 +273,8 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
         + SKIPPED_EXCLUSION   # 見送りは一覧に出さない (件数も揃える)
+        + STALE_EXCLUSION     # 掲載5年超も同様
+
     )
 
     def count(extra: str = "") -> int:
@@ -350,6 +363,11 @@ def _warning_chips(row: Any) -> list[str]:
     warn = municipalities.market_warning(get("city"))
     if warn:
         chips.append(warn)
+
+    # 長期売れ残り (掲載3年以上)。年数は今日基準で毎回計算する (時間とともに増えるため)
+    stale = enrich.stale_label(get("listed_at"))
+    if stale:
+        chips.append(stale)
 
     # AI判定は専用バッジで表示するので、ここでは重複させない
     return chips

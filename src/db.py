@@ -311,6 +311,10 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN resale_ng INTEGER DEFAULT 0",
     "ALTER TABLE properties ADD COLUMN resale_ng_reason TEXT",
     "ALTER TABLE properties ADD COLUMN resale_warnings TEXT",
+    # 掲載開始日(情報公開日)。詳細ページにしか無いので trade enrich で後から埋める。
+    # 「何年売れ残っているか」= 再販目線の重要シグナル。
+    "ALTER TABLE properties ADD COLUMN listed_at TEXT",
+    "ALTER TABLE properties ADD COLUMN enriched_at TEXT",
 ]
 
 
