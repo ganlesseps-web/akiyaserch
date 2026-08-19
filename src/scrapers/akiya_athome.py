@@ -489,3 +489,52 @@ class KirishimaAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "kirishima-c46218"
     area_path = ""
     prefecture = "鹿児島県"
+
+
+# --- セッション22追加: 岡山の抜け3 + 広島2 (2026-08 実測で予算内約60件の上積み) ---
+
+class TsuyamaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県津山市 (tsuyama-c33203.akiya-athome.jp). 県北最大の都市(約9.4万人)・内陸盆地。
+    実測: 掲載68件・予算内11件・最安50万。これまで見落としていた大物。"""
+    source = "tsuyama_akiyabank"
+    subdomain = "tsuyama-c33203"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class MisakiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県美咲町 (misaki-t33666.akiya-athome.jp). 内陸・津山圏。
+    実測: 掲載33件中 予算内18件・最安30万と、規模の割に予算帯が厚い。
+    ※過去に misaki-t33663 (誤JIS=久米南町の番号) を試して0件と誤判定していた。"""
+    source = "misaki_akiyabank"
+    subdomain = "misaki-t33666"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class ShooAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """岡山県勝央町 (shoo-t33622.akiya-athome.jp). 津山圏の工業団地の町・内陸。"""
+    source = "shoo_akiyabank"
+    subdomain = "shoo-t33622"
+    area_path = ""
+    prefecture = "岡山県"
+
+
+class MiyoshiHiroshimaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """広島県三次市 (miyoshi-c34209.akiya-athome.jp). 県北の盆地・内陸。
+    実測: 掲載61件・予算内29件と今回最厚。雪は松本と同程度とみられる(未検証)点は
+    ユーザー了承済み。※source 名は徳島県三好市(miyoshi_akiyabank)と衝突するため別名。"""
+    source = "miyoshi_hiroshima_akiyabank"
+    subdomain = "miyoshi-c34209"
+    area_path = ""
+    prefecture = "広島県"
+
+
+class HigashihiroshimaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """広島県東広島市 (higashihiroshima-c34212.akiya-athome.jp). 内陸盆地。
+    広島大学 + マイクロン半導体工場 = 賃貸需要の核が非常に強い。予算内は2件と
+    薄いが網張り枠。"""
+    source = "higashihiroshima_akiyabank"
+    subdomain = "higashihiroshima-c34212"
+    area_path = ""
+    prefecture = "広島県"

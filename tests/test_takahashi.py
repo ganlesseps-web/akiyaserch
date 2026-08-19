@@ -70,6 +70,11 @@ def test_rental_only_has_no_price():
 def test_registry_has_new_sources():
     assert "takahashi_akiyabank" in REGISTRY
     assert "akaiwa_akiyabank" in REGISTRY
+    # セッション22: 岡山の抜け3 + 広島2 (三次は徳島の三好と別ソース名)
+    for k in ("tsuyama_akiyabank", "misaki_akiyabank", "shoo_akiyabank",
+              "miyoshi_hiroshima_akiyabank", "higashihiroshima_akiyabank"):
+        assert k in REGISTRY
+    assert "miyoshi_akiyabank" in REGISTRY  # 徳島県三好市が上書きされていないこと
 
 
 def test_akaiwa_config():

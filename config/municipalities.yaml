@@ -92,8 +92,17 @@ municipalities:
   # ===== 徳島県 =====
   三好市:        {prefecture: 徳島県, population: 20549, rental_demand: false, tourism: true}   # 祖谷渓・かずら橋、大歩危
 
+  # ===== 岡山県・追加分 (population は概数・次回更新時に国勢調査確報で裏取りすること) =====
+  津山市:        {prefecture: 岡山県, population: 94000, rental_demand: true,  tourism: true}   # 県北最大・津山城(鶴山公園)、津山高専
+  美咲町:        {prefecture: 岡山県, population: 11000, rental_demand: false, tourism: false}  # 内陸・津山圏。棚田・卵かけごはんの町(全国区とまでは言えず tourism false)
+  勝央町:        {prefecture: 岡山県, population: 10800, rental_demand: true,  tourism: false}  # 津山圏の工業団地
+
   # ===== 高知県 =====
   本山町:        {prefecture: 高知県, population: 3022, rental_demand: false, tourism: false}   # 嶺北・土佐れいほく材 → 警告対象
+
+  # ===== 広島県 (population は概数・次回更新時に国勢調査確報で裏取りすること) =====
+  三次市:        {prefecture: 広島県, population: 47000,  rental_demand: true, tourism: true}   # 県北の中心・辻村寿三郎人形館/ワイナリー。雪は松本級(概数)
+  東広島市:      {prefecture: 広島県, population: 196000, rental_demand: true, tourism: true}   # 広島大学・マイクロン半導体、西条酒蔵通り
 
   # ===== 鹿児島県 =====
   霧島市:        {prefecture: 鹿児島県, population: 123135, rental_demand: true, tourism: true}  # 京セラ国分工場・ソニー・陸自駐屯地。観光(霧島温泉)はあるが民泊出口は新燃岳リスクで不可と判断(2026-08)
