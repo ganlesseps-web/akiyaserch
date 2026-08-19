@@ -214,3 +214,54 @@ def test_verdict_sort_orders_best_first(conn):
     _insert(conn, "none")
     titles = [r["title"] for r in webapp._query_rows(conn, "all", "verdict_best", None)]
     assert titles.index("物件ok") < titles.index("物件warn") < titles.index("物件none")
+
+
+# ---- 町名(地区)レベルの除外 (2026-08 6県調査で追加) ----
+
+def test_district_blacklist_skips_at_collection(monkeypatch):
+    """除外地区の物件は収集時に弾かれる (例: 霧島市の山間部)。"""
+    monkeypatch.setattr(purge, "_district_cache", {"霧島市": ("霧島田口", "牧園町")})
+    bad = _listing(city="霧島市", address="鹿児島県霧島市霧島田口2638", price=2_000_000)
+    ok = _listing(city="霧島市", address="鹿児島県霧島市国分中央3丁目", price=2_000_000)
+    assert purge.should_skip(bad) == "除外地区(霧島田口)"
+    assert purge.should_skip(ok) is None
+
+
+def test_district_blacklist_ignores_other_cities(monkeypatch):
+    """同じ町名でも別の市なら弾かない。"""
+    monkeypatch.setattr(purge, "_district_cache", {"霧島市": ("福山町",)})
+    other = _listing(city="高梁市", address="岡山県高梁市福山町1")  # 架空だが市が違う
+    assert purge.should_skip(other) is None
+
+
+def test_district_blacklist_passes_when_address_missing(monkeypatch):
+    """住所が無ければ判定できないので通す (デフォルト通過)。"""
+    monkeypatch.setattr(purge, "_district_cache", {"霧島市": ("霧島田口",)})
+    assert purge.should_skip(_listing(city="霧島市", address=None)) is None
+
+
+def test_district_blacklist_in_notify_filter(conn, monkeypatch):
+    """既に保存済みの物件も通知段階で弾かれる (保険)。"""
+    from src import filter as flt
+    monkeypatch.setattr(purge, "_district_cache", {"霧島市": ("牧園町",)})
+    cfg = flt.FilterConfig(
+        price_max=3_000_000, price_min=0, prefectures={"鹿児島県"},
+        borderline_prefectures=set(), drive_origin="", drive_max_seconds=7200,
+        ng_keywords=[], min_ai_score=0, property_types=set(),
+        exclude_dilapidated=False, exclude_needs_repair=False,
+        exclude_resale_ng=False, exclude_ai_skipped=False, city_blacklist=set(),
+    )
+    pid = _insert(conn, "k1", prefecture="鹿児島県", city="霧島市",
+                  address="鹿児島県霧島市牧園町高千穂", price=2_000_000)
+    row = conn.execute("SELECT * FROM properties WHERE id=?", (pid,)).fetchone()
+    ok, reason = flt.passes(conn, row, cfg)
+    assert not ok and "除外地区" in reason
+
+
+def test_district_blacklist_loads_from_yaml():
+    """同梱の filters.yaml から霧島市の除外地区が読めること。"""
+    purge._district_cache = None
+    table = purge.district_blacklist()
+    assert "霧島市" in table
+    assert "霧島田口" in table["霧島市"]
+    purge._district_cache = None

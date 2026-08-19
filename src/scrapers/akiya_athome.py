@@ -475,3 +475,17 @@ class NirasakiAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "nirasaki-c19207"
     area_path = ""
     prefecture = "山梨県"
+
+
+class KirishimaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """鹿児島県霧島市 (kirishima-c46218.akiya-athome.jp).
+
+    2026-08 6県調査で採用。京セラ国分工場(5,169人)・ソニー半導体・陸自国分駐屯地と
+    賃貸需要の核が硬い。ただし対象は平地の国分・隼人のみで、標高500-600mの山間部
+    (霧島田口/牧園町 等) は config/filters.yaml の district_blacklist で収集時に除外。
+    予算内(50-300万)の玉は現状1-2件と少ないが、追加コストほぼゼロの「網張り」枠。
+    ※民泊出口は不可と判断済み (新燃岳が15年で4回噴火、宿泊需要の変動が大きすぎる)。"""
+    source = "kirishima_akiyabank"
+    subdomain = "kirishima-c46218"
+    area_path = ""
+    prefecture = "鹿児島県"

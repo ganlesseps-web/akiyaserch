@@ -153,6 +153,12 @@ def passes(
         if city and city in cfg.city_blacklist:
             return False, f"city {city} in blacklist"
 
+    # 町名(地区) blacklist (市は残すがこの地区は除外、例: 霧島市の山間部)
+    from . import purge as _purge
+    district = _purge.district_skip_reason(row["city"], row["address"])
+    if district:
+        return False, district
+
     # 境界府県は Distance Matrix で詰める（任意・キー設定時のみ）
     if use_distance_matrix and pref in cfg.borderline_prefectures and row["address"]:
         ok, reason = _check_drive_time(conn, row["address"], cfg)

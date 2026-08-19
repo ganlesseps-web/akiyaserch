@@ -13,7 +13,10 @@ scrape 側のスキップと purge 側の削除で**同じ条件**を使うこ�
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 from . import db
 
@@ -34,6 +37,41 @@ CHILD_TABLES = (
 )
 
 
+_district_cache: dict[str, tuple[str, ...]] | None = None
+
+
+def district_blacklist(path: Path | None = None) -> dict[str, tuple[str, ...]]:
+    """町名(地区)除外リストを filters.yaml から読む (1プロセス1回)。
+
+    「市は残したいがこの地区は要らない」用 (例: 霧島市の山間部を除外して
+    国分・隼人だけ通す)。市町村単位の city_blacklist では粗すぎるケースに使う。
+    """
+    global _district_cache
+    if _district_cache is not None and path is None:
+        return _district_cache
+    p = path or Path("config/filters.yaml")
+    table: dict[str, tuple[str, ...]] = {}
+    if p.exists():
+        data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        for city, towns in (data.get("district_blacklist") or {}).items():
+            table[str(city)] = tuple(str(t) for t in (towns or []))
+    if path is None:
+        _district_cache = table
+    return table
+
+
+def district_skip_reason(city: str | None, address: str | None) -> str | None:
+    """除外地区に該当すれば理由を返す。住所が無い/地区が特定できない場合は通す。"""
+    if not city or not address:
+        return None
+    for bl_city, towns in district_blacklist().items():
+        if bl_city in city:
+            for town in towns:
+                if town in address:
+                    return f"除外地区({town})"
+    return None
+
+
 def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) -> str | None:
     """DBに入れない物件なら理由を返す。入れてよければ None。
 
@@ -43,6 +81,9 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
         return "土地"
     if listing.price is not None and listing.price >= price_cutoff:
         return "300万円以上"
+    district = district_skip_reason(listing.city, listing.address)
+    if district:
+        return district
     return None
 
 
