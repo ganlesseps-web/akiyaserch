@@ -29,7 +29,8 @@ def _insert(conn, lid, **over):
     qs = ",".join("?" * len(fields))
     conn.execute(f"INSERT INTO properties ({cols}) VALUES ({qs})", tuple(fields.values()))
     return conn.execute(
-        "SELECT id FROM properties WHERE source='t' AND listing_id=?", (lid,)).fetchone()["id"]
+        "SELECT id FROM properties WHERE source=? AND listing_id=?",
+        (fields["source"], lid)).fetchone()["id"]
 
 
 # ---- 日付のパース ----
@@ -138,3 +139,80 @@ def test_enrich_targets_only_missing(conn, monkeypatch):
     assert seen == ["https://x.akiya-athome.jp/b"]           # 未取得の1件だけ見に行く
     got = conn.execute("SELECT listed_at FROM properties WHERE listing_id='todo'").fetchone()
     assert got["listed_at"] == "2022-03-04"
+
+
+# ---- 家いちば: 物件IDから掲載年を導く (通信不要) ----
+
+def test_ieichiba_id_to_year():
+    assert enrich.listed_at_from_ieichiba_id("P202600715") == "2026-12-31"
+    assert enrich.listed_at_from_ieichiba_id("P201800122") == "2018-12-31"
+
+
+def test_ieichiba_id_invalid():
+    for bad in ("X123", "", None, "P199900001", "202600715"):
+        assert enrich.listed_at_from_ieichiba_id(bad) is None
+
+
+def test_ieichiba_uses_year_end_conservatively():
+    """年しか分からないので12/31扱い = 経過年数を過大に見積もらない。
+
+    こうしないと「1月掲載」と誤認して、まだ5年経っていない物件を消してしまう。
+    """
+    from datetime import date
+    d = enrich.listed_at_from_ieichiba_id("P202100001")
+    yrs = enrich.listed_years(d, today=date(2026, 8, 19))
+    assert yrs < 5.0        # 2021年掲載でも 2026/8 時点では5年未満と判定
+
+
+def test_enrich_fills_ieichiba_without_network(conn, monkeypatch):
+    _insert(conn, "P202100050", source="ieichiba", url="https://www.ieichiba.com/project/x")
+
+    def _boom():
+        raise AssertionError("家いちばは通信してはいけない")
+    monkeypatch.setattr(enrich, "_client", _boom)
+    st = enrich.enrich_missing(conn)
+    assert st["ieichiba"] == 1
+    got = conn.execute("SELECT listed_at FROM properties").fetchone()["listed_at"]
+    assert got == "2021-12-31"
+
+
+# ---- 楽園信州: 掲載日は無いが 駐車場/下水道 を本文に足す ----
+
+RAKUEN_HTML = """
+<table>
+ <tr><th>下水道</th><td>公共下水道</td></tr>
+ <tr><th>駐車場</th><td>有　台数：1台あり</td></tr>
+ <tr><th>土地権利</th><td>所有権</td></tr>
+ <tr><th>電話</th><td>0263-00-0000</td></tr>
+</table>
+"""
+
+
+def test_parse_rakuen_details():
+    got = enrich.parse_rakuen_details(RAKUEN_HTML)
+    assert "駐車場:有" in got.replace(" ", "")
+    assert "下水道:公共下水道" in got.replace(" ", "")
+    assert "土地権利:所有権" in got.replace(" ", "")
+    assert "電話" not in got          # 判定に無関係な項目は入れない
+
+
+def test_rakuen_details_merged_into_body(conn, monkeypatch):
+    _insert(conn, "r1", source="matsumoto_rakuen",
+            url="https://rakuen-akiya.jp/bukken/441043/", body="中古住宅 | 築:1982年")
+
+    class _R:
+        content = RAKUEN_HTML.encode("utf-8")
+        def raise_for_status(self): pass
+
+    class _C:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url): return _R()
+
+    monkeypatch.setattr(enrich, "_client", lambda: _C())
+    monkeypatch.setattr(enrich.time, "sleep", lambda s: None)
+    st = enrich.enrich_missing(conn)
+    assert st["rakuen"] == 1
+    body = conn.execute("SELECT body FROM properties").fetchone()["body"]
+    assert "築:1982年" in body           # 元の本文は残る
+    assert "駐車場" in body and "下水道" in body

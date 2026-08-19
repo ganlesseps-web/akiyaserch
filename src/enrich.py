@@ -64,6 +64,28 @@ def parse_listed_at(html: bytes | str) -> str | None:
     return None
 
 
+# 家いちば の物件IDは P{西暦}{連番} 形式 (実測: 2018〜2026年まで全件一貫)。
+# 詳細ページに日付表記が無いので、ここから掲載年を導く (追加リクエスト不要)。
+_IEICHIBA_ID_RE = re.compile(r"^P(20\d{2})\d{3,6}$")
+
+
+def listed_at_from_ieichiba_id(listing_id: str | None) -> str | None:
+    """家いちばの物件IDから掲載日を推定する。
+
+    年までしか分からないため **その年の12月31日** として扱う (最も新しい可能性)。
+    こうすると経過年数を過大に見積もらず、「5年超」の除外で誤って消すことがない。
+    """
+    if not listing_id:
+        return None
+    m = _IEICHIBA_ID_RE.match(str(listing_id).strip())
+    if not m:
+        return None
+    year = int(m.group(1))
+    if not (2000 <= year <= date.today().year):
+        return None
+    return f"{year}-12-31"
+
+
 def listed_years(listed_at: str | None, *, today: date | None = None) -> float | None:
     """掲載開始からの経過年数。取れていなければ None。"""
     if not listed_at:
@@ -84,6 +106,27 @@ def stale_label(listed_at: str | None, *, today: date | None = None) -> str | No
     return f"長期売れ残り(掲載{yrs:.1f}年)"
 
 
+# 楽園信州(長野)は掲載開始日を公開していないが、詳細ページに
+# 駐車場 / 下水道 / 土地権利 など**ユーザーの条件そのもの**が明記されている。
+# これを本文に取り込むと、既存のキーワード判定(汲み取り/井戸/駐車場なし等)が効く。
+_RAKUEN_FIELDS = ("駐車場", "下水道", "土地権利", "設備", "構造", "完成年月", "備考／防災情報")
+
+
+def parse_rakuen_details(html: bytes | str) -> str | None:
+    """楽園信州の詳細ページから、判定に使える項目を1行にまとめて返す。"""
+    soup = BeautifulSoup(html, "lxml")
+    found: dict[str, str] = {}
+    for tr in soup.select("tr"):
+        cells = [c.get_text(" ", strip=True) for c in tr.select("th,td")]
+        for i in range(0, len(cells) - 1, 2):
+            key, val = cells[i], cells[i + 1]
+            if key in _RAKUEN_FIELDS and val and key not in found:
+                found[key] = val[:200]
+    if not found:
+        return None
+    return " | ".join(f"{k}:{v}" for k, v in found.items())
+
+
 def _client() -> httpx.Client:
     # akiya-athome は中間証明書を返さないため verify=False (既存 scraper と同じ理由)
     ssl.create_default_context()
@@ -94,28 +137,51 @@ def _client() -> httpx.Client:
 
 
 def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
-    """掲載日が未取得の物件について、詳細ページを1回だけ見に行く。"""
+    """まだ情報を補っていない物件を、ソースごとの方法で1回だけ補完する。
+
+    - アットホーム系 : 詳細ページの「情報公開日」を取得
+    - 家いちば       : 物件ID (P{西暦}...) から掲載年を導く (通信不要)
+    - 楽園信州(長野) : 掲載日は非公開。代わりに詳細ページの
+                       駐車場/下水道/土地権利 を本文に足す (判定に効く)
+    """
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+    stats = {"target": 0, "found": 0, "no_date": 0, "failed": 0, "ieichiba": 0, "rakuen": 0}
+    now = db.now_iso()
+
+    # --- 家いちば: 通信せずIDから年を入れる (先に済ませる = 一番安い) ---
+    rows = conn.execute(
+        "SELECT id, listing_id FROM properties"
+        " WHERE status='active' AND listed_at IS NULL AND source='ieichiba' LIMIT ?",
+        (limit,),
+    ).fetchall()
+    for row in rows:
+        listed = listed_at_from_ieichiba_id(row["listing_id"])
+        if listed:
+            conn.execute(
+                "UPDATE properties SET listed_at = ?, enriched_at = ? WHERE id = ?",
+                (listed, now, row["id"]),
+            )
+            stats["ieichiba"] += 1
+            stats["found"] += 1
+
+    # --- 通信が必要なもの (アットホーム系 / 楽園信州) ---
     rows = conn.execute(
         """
-        SELECT id, url FROM properties
+        SELECT id, url, body, source FROM properties
         WHERE status = 'active'
-          AND listed_at IS NULL
           AND enriched_at IS NULL
-          AND url LIKE '%akiya-athome.jp%'
+          AND (url LIKE '%akiya-athome.jp%' OR url LIKE '%rakuen-akiya.jp%')
         ORDER BY first_seen_at DESC
         LIMIT ?
         """,
         (limit,),
     ).fetchall()
-
-    stats = {"target": len(rows), "found": 0, "no_date": 0, "failed": 0}
+    stats["target"] = len(rows)
     if not rows:
         return stats
 
-    now = db.now_iso()
     with _client() as client:
         for row in rows:
             try:
@@ -127,15 +193,31 @@ def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
                 time.sleep(INTER_REQUEST_SECONDS)
                 continue
 
-            listed = parse_listed_at(resp.content)
-            # enriched_at は「見に行った」印。日付が無いページを毎回叩かないため。
-            conn.execute(
-                "UPDATE properties SET listed_at = ?, enriched_at = ? WHERE id = ?",
-                (listed, now, row["id"]),
-            )
-            if listed:
-                stats["found"] += 1
-            else:
+            if "rakuen-akiya.jp" in (row["url"] or ""):
+                # 掲載日は無い。判定材料 (駐車場/下水道 等) を本文に足す。
+                extra = parse_rakuen_details(resp.content)
+                if extra:
+                    body = (row["body"] or "").strip()
+                    merged = f"{body} | {extra}" if body else extra
+                    conn.execute(
+                        "UPDATE properties SET body = ?, enriched_at = ? WHERE id = ?",
+                        (merged[:4000], now, row["id"]),
+                    )
+                    stats["rakuen"] += 1
+                else:
+                    conn.execute(
+                        "UPDATE properties SET enriched_at = ? WHERE id = ?", (now, row["id"])
+                    )
                 stats["no_date"] += 1
+            else:
+                listed = parse_listed_at(resp.content)
+                conn.execute(
+                    "UPDATE properties SET listed_at = ?, enriched_at = ? WHERE id = ?",
+                    (listed, now, row["id"]),
+                )
+                if listed:
+                    stats["found"] += 1
+                else:
+                    stats["no_date"] += 1
             time.sleep(INTER_REQUEST_SECONDS)
     return stats
