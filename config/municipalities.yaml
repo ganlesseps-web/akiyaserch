@@ -100,6 +100,21 @@ municipalities:
   # ===== 高知県 =====
   本山町:        {prefecture: 高知県, population: 3022, rental_demand: false, tourism: false}   # 嶺北・土佐れいほく材 → 警告対象
 
+  # ===== セッション23追加: 既存対象県の抜け13自治体 (population は概数) =====
+  加西市:        {prefecture: 兵庫県, population: 42000, rental_demand: true,  tourism: false}  # 播磨平野・姫路通勤圏、根日女伝説/鶉野飛行場跡
+  西脇市:        {prefecture: 兵庫県, population: 38000, rental_demand: true,  tourism: false}  # 播州織の産地・「日本のへそ」
+  美馬市:        {prefecture: 徳島県, population: 27000, rental_demand: false, tourism: true}   # 脇町うだつの町並み(重伝建)
+  那賀町:        {prefecture: 徳島県, population: 7300,  rental_demand: false, tourism: true}   # 四国山地・大轟の滝/剣山系。人口小だが観光あり
+  紀の川市:      {prefecture: 和歌山県, population: 59000, rental_demand: true, tourism: false} # 紀の川流域の平地・大阪通勤圏
+  かつらぎ町:    {prefecture: 和歌山県, population: 16000, rental_demand: true, tourism: true}  # 紀の川沿い・高野山麓、果樹
+  津市:          {prefecture: 三重県, population: 274000, rental_demand: true, tourism: true}   # 県庁所在地、三重大学
+  東近江市:      {prefecture: 滋賀県, population: 112000, rental_demand: true, tourism: true}   # 湖東平野・京阪神通勤圏、永源寺
+  日野町:        {prefecture: 滋賀県, population: 21000, rental_demand: true,  tourism: true}   # 湖東・近江日野商人のまち
+  桜井市:        {prefecture: 奈良県, population: 54000, rental_demand: true,  tourism: true}   # 奈良盆地南部・大阪通勤圏、大神神社/長谷寺
+  大淀町:        {prefecture: 奈良県, population: 16000, rental_demand: true,  tourism: false}  # 吉野川北岸・大阪通勤圏
+  御杖村:        {prefecture: 奈良県, population: 1500,  rental_demand: false, tourism: true}   # 奈良東端・みつえ青少年旅行村/姫石の湯
+  山添村:        {prefecture: 奈良県, population: 3200,  rental_demand: true,  tourism: false}  # 名阪国道沿い・奈良/伊賀通勤圏
+
   # ===== 広島県 (population は概数・次回更新時に国勢調査確報で裏取りすること) =====
   三次市:        {prefecture: 広島県, population: 47000,  rental_demand: true, tourism: true}   # 県北の中心・辻村寿三郎人形館/ワイナリー。雪は松本級(概数)
   東広島市:      {prefecture: 広島県, population: 196000, rental_demand: true, tourism: true}   # 広島大学・マイクロン半導体、西条酒蔵通り

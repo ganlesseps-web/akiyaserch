@@ -538,3 +538,110 @@ class HigashihiroshimaAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "higashihiroshima-c34212"
     area_path = ""
     prefecture = "広島県"
+
+# --- セッション23追加: 既存対象県の抜け13自治体 (2026-08 実測で予算内61件) ---
+
+
+class KasaiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県加西市 (kasai-c28220.akiya-athome.jp).
+    播磨平野の内陸・姫路通勤圏。掲載35・予算内8・最安50万。内陸。"""
+    source = "kasai_akiyabank"
+    subdomain = "kasai-c28220"
+    area_path = ""
+    prefecture = "兵庫県"
+
+class NishiwakiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """兵庫県西脇市 (nishiwaki-c28213.akiya-athome.jp).
+    播磨内陸「日本のへそ」。掲載32・予算内4。内陸。"""
+    source = "nishiwaki_akiyabank"
+    subdomain = "nishiwaki-c28213"
+    area_path = ""
+    prefecture = "兵庫県"
+
+class MimaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """徳島県美馬市 (mima-c36207.akiya-athome.jp).
+    脇町うだつの町並み(重伝建)・吉野川沿い盆地。掲載30・予算内10・最安50万。内陸。"""
+    source = "mima_akiyabank"
+    subdomain = "mima-c36207"
+    area_path = ""
+    prefecture = "徳島県"
+
+class KinokawaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """和歌山県紀の川市 (kinokawa-c30208.akiya-athome.jp).
+    紀の川流域の平地・大阪通勤圏(橋本の隣)。掲載17・予算内6。内陸。"""
+    source = "kinokawa_akiyabank"
+    subdomain = "kinokawa-c30208"
+    area_path = ""
+    prefecture = "和歌山県"
+
+class TsuAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """三重県津市 (tsu-c24201.akiya-athome.jp).
+    県庁所在地。掲載15・予算内4。内陸。"""
+    source = "tsu_akiyabank"
+    subdomain = "tsu-c24201"
+    area_path = ""
+    prefecture = "三重県"
+
+class NakaAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """徳島県那賀町 (naka-t36368.akiya-athome.jp).
+    四国山地の内陸。掲載13中12が予算内・最安10万と予算内率が突出。内陸。"""
+    source = "naka_akiyabank"
+    subdomain = "naka-t36368"
+    area_path = ""
+    prefecture = "徳島県"
+
+class KatsuragiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """和歌山県かつらぎ町 (katsuragi-t30341.akiya-athome.jp).
+    紀の川沿い内陸。掲載13・予算内2。内陸。"""
+    source = "katsuragi_akiyabank"
+    subdomain = "katsuragi-t30341"
+    area_path = ""
+    prefecture = "和歌山県"
+
+class HigashiomiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """滋賀県東近江市 (higashiomi-c25213.akiya-athome.jp).
+    湖東平野・京阪神通勤圏。掲載11・予算内5。内陸。"""
+    source = "higashiomi_akiyabank"
+    subdomain = "higashiomi-c25213"
+    area_path = ""
+    prefecture = "滋賀県"
+
+class HinoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """滋賀県日野町 (hino-t25383.akiya-athome.jp).
+    湖東の内陸。掲載11・予算内1。内陸。"""
+    source = "hino_akiyabank"
+    subdomain = "hino-t25383"
+    area_path = ""
+    prefecture = "滋賀県"
+
+class OyodoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """奈良県大淀町 (oyodo-t29442.akiya-athome.jp).
+    吉野川北岸・大阪通勤圏。掲載7・予算内1。内陸。"""
+    source = "oyodo_akiyabank"
+    subdomain = "oyodo-t29442"
+    area_path = ""
+    prefecture = "奈良県"
+
+class SakuraiAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """奈良県桜井市 (sakurai-c29206.akiya-athome.jp).
+    奈良盆地南部・大阪通勤圏。掲載4・予算内3。内陸。"""
+    source = "sakurai_akiyabank"
+    subdomain = "sakurai-c29206"
+    area_path = ""
+    prefecture = "奈良県"
+
+class MitsueAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """奈良県御杖村 (mitsue-v29386.akiya-athome.jp).
+    奈良東部の山間。掲載3・予算内2。内陸。"""
+    source = "mitsue_akiyabank"
+    subdomain = "mitsue-v29386"
+    area_path = ""
+    prefecture = "奈良県"
+
+class YamazoeAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """奈良県山添村 (yamazoe-v29322.akiya-athome.jp).
+    奈良東部・名阪国道沿い。掲載2・予算内2。内陸。"""
+    source = "yamazoe_akiyabank"
+    subdomain = "yamazoe-v29322"
+    area_path = ""
+    prefecture = "奈良県"
