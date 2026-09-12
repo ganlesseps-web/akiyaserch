@@ -215,10 +215,10 @@ def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
             stats["ieichiba"] += 1
             stats["found"] += 1
 
-    # --- みんなの0円物件: APIの登録日(posted_at)を写すだけ。通信不要 ---
+    # --- みんなの0円物件 / ジモティ: 一覧の登録日(posted_at)を写すだけ。通信不要 ---
     rows = conn.execute(
         "SELECT id, posted_at FROM properties"
-        " WHERE status='active' AND listed_at IS NULL AND source='minna_0en'"
+        " WHERE status='active' AND listed_at IS NULL AND source IN ('minna_0en', 'jmty')"
         "   AND posted_at IS NOT NULL LIMIT ?",
         (limit,),
     ).fetchall()

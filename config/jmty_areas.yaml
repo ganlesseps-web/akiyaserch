@@ -1,0 +1,333 @@
+# ジモティ (jmty.jp) の収集対象。市区町村ごとの地域コード。
+#
+# URL の形: https://jmty.jp/{pref}/est-buy/g-214/{code}
+#   est-buy = 不動産売買 / g-214 = 中古(マンション/一戸建て)
+# 対象は config/municipalities.yaml の自治体 (=空き家バンクで既に見ている市町村) に揃える。
+# 町村はジモティ上で「○○郡」単位にまとまるため、郡のページを1回だけ見て
+# towns の町村名で住所照合する (郡内の対象外の町は normalize 後の city で弾かれる)。
+#
+# 「提携サイト」(不動産会社広告の転載) は詳細リンクが無く価格帯も予算外なので
+# 取らない。個人の直接投稿だけを対象にする (空き家バンクに無い掘り出し物が狙い)。
+# 2026-09-12: 実サイトから自動抽出。
+
+areas:
+  - pref: hiroshima
+    pref_ja: 広島県
+    code: a-666-miyoshi
+    label: 三次市
+    towns: [三次市]
+  - pref: hiroshima
+    pref_ja: 広島県
+    code: a-669-higashihiroshima
+    label: 東広島市
+    towns: [東広島市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-588-nishiwaki
+    label: 西脇市
+    towns: [西脇市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-595-kasai
+    label: 加西市
+    towns: [加西市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-596-tanbasasayama
+    label: 丹波篠山市
+    towns: [丹波篠山市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-597-yabu
+    label: 養父市
+    towns: [養父市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-600-asago
+    label: 朝来市
+    towns: [朝来市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-602-shiso
+    label: 宍粟市
+    towns: [宍粟市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-604-tatsuno
+    label: たつの市
+    towns: [たつの市]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-89446-taka
+    label: 多可郡
+    towns: [多可町]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-89448-kanzaki
+    label: 神崎郡
+    towns: [市川町, 神河町]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-89450-ako
+    label: 赤穂郡
+    towns: [上郡町]
+  - pref: hyogo
+    pref_ja: 兵庫県
+    code: a-89451-sayo
+    label: 佐用郡
+    towns: [佐用町]
+  - pref: kagoshima
+    pref_ja: 鹿児島県
+    code: a-835-kirishima
+    label: 霧島市
+    towns: [霧島市]
+  - pref: kochi
+    pref_ja: 高知県
+    code: a-89516-nagaoka
+    label: 長岡郡
+    towns: [本山町]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-527-fukuchiyama
+    label: 福知山市
+    towns: [福知山市]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-528-maizuru
+    label: 舞鶴市
+    towns: [舞鶴市]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-529-ayabe
+    label: 綾部市
+    towns: [綾部市]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-538-kyotango
+    label: 京丹後市
+    towns: [京丹後市]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-539-nantan
+    label: 南丹市
+    towns: [南丹市]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-89438-funai
+    label: 船井郡
+    towns: [京丹波町]
+  - pref: kyoto
+    pref_ja: 京都府
+    code: a-89439-yosa
+    label: 与謝郡
+    towns: [伊根町]
+  - pref: mie
+    pref_ja: 三重県
+    code: a-497-tsu
+    label: 津市
+    towns: [津市]
+  - pref: mie
+    pref_ja: 三重県
+    code: a-500-matsusaka
+    label: 松阪市
+    towns: [松阪市]
+  - pref: mie
+    pref_ja: 三重県
+    code: a-503-nabari
+    label: 名張市
+    towns: [名張市]
+  - pref: mie
+    pref_ja: 三重県
+    code: a-510-iga
+    label: 伊賀市
+    towns: [伊賀市]
+  - pref: mie
+    pref_ja: 三重県
+    code: a-89427-taki
+    label: 多気郡
+    towns: [大台町]
+  - pref: nagano
+    pref_ja: 長野県
+    code: a-394-matsumoto
+    label: 松本市
+    towns: [松本市]
+  - pref: nagano
+    pref_ja: 長野県
+    code: a-401-ina
+    label: 伊那市
+    towns: [伊那市]
+  - pref: nagano
+    pref_ja: 長野県
+    code: a-407-shiojiri
+    label: 塩尻市
+    towns: [塩尻市]
+  - pref: nagano
+    pref_ja: 長野県
+    code: a-411-azumino
+    label: 安曇野市
+    towns: [安曇野市]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-611-sakurai
+    label: 桜井市
+    towns: [桜井市]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-612-gojo
+    label: 五條市
+    towns: [五條市]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-617-uda
+    label: 宇陀市
+    towns: [宇陀市]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-89453-yamabe
+    label: 山辺郡
+    towns: [山添村]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-89456-uda
+    label: 宇陀郡
+    towns: [御杖村]
+  - pref: nara
+    pref_ja: 奈良県
+    code: a-89459-yoshino
+    label: 吉野郡
+    towns: [下市町, 十津川村, 大淀町, 東吉野村]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-645-tsuyama
+    label: 津山市
+    towns: [津山市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-648-ibara
+    label: 井原市
+    towns: [井原市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-650-takahashi
+    label: 高梁市
+    towns: [高梁市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-651-niimi
+    label: 新見市
+    towns: [新見市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-654-akaiwa
+    label: 赤磐市
+    towns: [赤磐市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-656-mimasaka
+    label: 美作市
+    towns: [美作市]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89476-wake
+    label: 和気郡
+    towns: [和気町]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89481-tomata
+    label: 苫田郡
+    towns: [鏡野町]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89482-katsuta
+    label: 勝田郡
+    towns: [勝央町, 奈義町]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89483-aida
+    label: 英田郡
+    towns: [西粟倉村]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89484-kume
+    label: 久米郡
+    towns: [美咲町]
+  - pref: okayama
+    pref_ja: 岡山県
+    code: a-89485-kaga
+    label: 加賀郡
+    towns: [吉備中央町]
+  - pref: shiga
+    pref_ja: 滋賀県
+    code: a-519-koka
+    label: 甲賀市
+    towns: [甲賀市]
+  - pref: shiga
+    pref_ja: 滋賀県
+    code: a-522-takashima
+    label: 高島市
+    towns: [高島市]
+  - pref: shiga
+    pref_ja: 滋賀県
+    code: a-523-higashiomi
+    label: 東近江市
+    towns: [東近江市]
+  - pref: shiga
+    pref_ja: 滋賀県
+    code: a-89431-gamou
+    label: 蒲生郡
+    towns: [日野町]
+  - pref: tokushima
+    pref_ja: 徳島県
+    code: a-694-mima
+    label: 美馬市
+    towns: [美馬市]
+  - pref: tokushima
+    pref_ja: 徳島県
+    code: a-695-miyoshi
+    label: 三好市
+    towns: [三好市]
+  - pref: tokushima
+    pref_ja: 徳島県
+    code: a-89498-naka
+    label: 那賀郡
+    towns: [那賀町]
+  - pref: wakayama
+    pref_ja: 和歌山県
+    code: a-621-hashimoto
+    label: 橋本市
+    towns: [橋本市]
+  - pref: wakayama
+    pref_ja: 和歌山県
+    code: a-626-kinokawa
+    label: 紀の川市
+    towns: [紀の川市]
+  - pref: wakayama
+    pref_ja: 和歌山県
+    code: a-89461-ito
+    label: 伊都郡
+    towns: [かつらぎ町]
+  - pref: yamaguchi
+    pref_ja: 山口県
+    code: a-684-mine
+    label: 美祢市
+    towns: [美祢市]
+  - pref: yamanashi
+    pref_ja: 山梨県
+    code: a-384-nirasaki
+    label: 韮崎市
+    towns: [韮崎市]
+  - pref: yamanashi
+    pref_ja: 山梨県
+    code: a-385-minamiarupusu
+    label: 南アルプス市
+    towns: [南アルプス市]
+  - pref: yamanashi
+    pref_ja: 山梨県
+    code: a-386-hokuto
+    label: 北杜市
+    towns: [北杜市]
+  - pref: yamanashi
+    pref_ja: 山梨県
+    code: a-390-koshu
+    label: 甲州市
+    towns: [甲州市]

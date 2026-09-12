@@ -1,6 +1,7 @@
 from .base import Scraper
 from .minna_0en import MinnaZeroEnScraper
 from .ieichiba import IeichibaScraper
+from .jmty import JmtyScraper
 from .iga_akiyabank import IgaAkiyabankScraper
 from .akiya_athome import (
     KamikawaAkiyabankScraper,
@@ -79,6 +80,7 @@ from .totsukawa import TotsukawaScraper
 REGISTRY: dict[str, type[Scraper]] = {
     "minna_0en": MinnaZeroEnScraper,
     "ieichiba": IeichibaScraper,
+    "jmty": JmtyScraper,
     "iga_akiyabank": IgaAkiyabankScraper,
     "kamikawa_akiyabank": KamikawaAkiyabankScraper,
     "taka_akiyabank": TakaAkiyabankScraper,
