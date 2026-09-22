@@ -47,7 +47,8 @@ jobs:
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: python -m src.cli scrape
+        # アットホーム系は海外IPが403で遮断されるため Mac 側が担当 (--group athome)
+        run: python -m src.cli scrape --group other
 
       # 詳細ページから掲載開始日(情報公開日)を取得する。
       # 未取得の物件だけを1回だけ見に行くので、日が経つほど対象は減る。

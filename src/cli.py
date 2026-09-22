@@ -36,13 +36,33 @@ def db_cmd(action: str) -> None:
         click.echo(str(db.db_path()))
 
 
+def _athome_sources() -> set[str]:
+    """アットホーム空き家バンク系 (akiya-athome.jp) の収集元。
+
+    2026-09-01 からアットホームが海外IP(GitHub Actions=米国)を403で遮断するため、
+    これらは日本国内(Mac)から収集する。GitHub 側はそれ以外を担当する。
+    """
+    from .scrapers.akiya_athome import AkiyaAthomeBaseScraper
+    return {name for name, cls in REGISTRY.items() if issubclass(cls, AkiyaAthomeBaseScraper)}
+
+
 @cli.command()
 @click.argument("source", required=False)
-def scrape(source: str | None) -> None:
+@click.option("--group", type=click.Choice(["all", "athome", "other"]), default="all",
+              show_default=True,
+              help="athome=アットホーム系だけ(Mac担当) / other=それ以外(GitHub担当)")
+def scrape(source: str | None, group: str) -> None:
     """指定ソース(or 全部)をスクレイプして DB に保存。"""
     db.init_db()
     from . import sold as sold_rules
-    sources = [source] if source else list(REGISTRY.keys())
+    if source:
+        sources = [source]
+    elif group == "athome":
+        sources = sorted(_athome_sources())
+    elif group == "other":
+        sources = [n for n in REGISTRY if n not in _athome_sources()]
+    else:
+        sources = list(REGISTRY.keys())
     summary: dict[str, dict[str, int]] = {}
     # 「今日ちゃんと取れた」収集元。0件だった収集元は売れた判定の対象にしない
     # (サイト障害で全物件が sold 扱いになる事故を防ぐ)
@@ -285,7 +305,7 @@ def assess(limit: int) -> None:
 
 @cli.group("launchd")
 def launchd_grp() -> None:
-    """launchd への登録/解除。"""
+    """Mac の毎朝自動収集 (アットホーム系) の登録/解除/確認。"""
 
 
 @launchd_grp.command("install")
@@ -304,6 +324,13 @@ def launchd_uninstall() -> None:
 def launchd_status() -> None:
     from . import scheduler
     scheduler.status()
+
+
+@launchd_grp.command("run-now")
+def launchd_run_now() -> None:
+    """登録済みの収集ジョブを今すぐ1回起動する (動作確認用)。"""
+    from . import scheduler
+    scheduler.run_now()
 
 
 
