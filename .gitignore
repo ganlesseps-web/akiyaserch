@@ -37,3 +37,6 @@ logs/
 # Claude
 .claude/worktrees/
 .vercel
+
+# Mac の launchd 用に自動生成される (trade launchd install)
+launchd/
