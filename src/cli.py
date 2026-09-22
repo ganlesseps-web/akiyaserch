@@ -308,3 +308,25 @@ def launchd_status() -> None:
 
 if __name__ == "__main__":
     cli()
+
+
+@cli.command("sold-preview")
+def sold_preview() -> None:
+    """掲載終了になる見込みの物件を収集元ごとに表示する (何も変更しない)。"""
+    db.init_db()
+    with db.connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT source,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN substr(last_seen_at,1,10) <= date('now','-3 days')
+                            THEN 1 ELSE 0 END) AS pending,
+                   MAX(substr(last_seen_at,1,10)) AS latest_seen
+            FROM properties WHERE status='active'
+            GROUP BY source ORDER BY pending DESC
+            """
+        ).fetchall()
+    click.echo(f"{'収集元':<32}{'掲載中':>6}{'終了見込':>8}  最後に見かけた日")
+    for r in rows:
+        flag = " ← 全滅?" if r["pending"] == r["total"] and r["total"] > 0 else ""
+        click.echo(f"{r['source']:<32}{r['total']:>6}{r['pending']:>8}  {r['latest_seen']}{flag}")
