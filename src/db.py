@@ -315,6 +315,8 @@ MIGRATIONS = [
     # 「何年売れ残っているか」= 再販目線の重要シグナル。
     "ALTER TABLE properties ADD COLUMN listed_at TEXT",
     "ALTER TABLE properties ADD COLUMN enriched_at TEXT",
+    # 掲載終了(売れた/取り下げ)を検知した日時。status='sold' とセット。
+    "ALTER TABLE properties ADD COLUMN sold_at TEXT",
 ]
 
 
@@ -341,7 +343,7 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
     (値下げ通知の元データ)。
     """
     row = conn.execute(
-        "SELECT id, price FROM properties WHERE source = ? AND listing_id = ?",
+        "SELECT id, price, status FROM properties WHERE source = ? AND listing_id = ?",
         (listing.source, listing.listing_id),
     ).fetchone()
     now = now_iso()
@@ -373,6 +375,12 @@ def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
             ),
         )
         return cur.lastrowid, True
+    # 掲載終了(sold)と判定していた物件を再び見かけた = 再掲載 → 復活させる
+    if row["status"] == "sold":
+        conn.execute(
+            "UPDATE properties SET status = 'active', sold_at = NULL WHERE id = ?",
+            (row["id"],),
+        )
     conn.execute(
         """
         UPDATE properties SET

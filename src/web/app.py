@@ -106,6 +106,7 @@ _VERDICT_RANK = (
 )
 
 SORT_OPTIONS = {
+    "sold_recent": "p.sold_at DESC",
     "verdict_best": f"{_VERDICT_RANK} ASC, p.first_seen_at DESC",
     "new": "p.first_seen_at DESC",
     "price_asc": "(p.price IS NULL) ASC, p.price ASC, p.first_seen_at DESC",
@@ -147,9 +148,12 @@ def _query_rows(
             (SELECT verdict FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict,
             (SELECT reasons FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict_reason
         FROM properties p
-        WHERE p.status = 'active'
+        WHERE p.status = ?
     """
-    params: list[Any] = []
+    # 「💰売れた」タブだけ status='sold' を見る。それ以外は掲載中のみ
+    params: list[Any] = ["sold" if view == "sold" else "active"]
+    if view == "sold" and sort == "new":
+        sort = "sold_recent"   # 売れたタブは「売れた日の新しい順」が自然
 
     # property_type ビュー (house/land/apartment/all)
     if view in ("house", "land", "apartment", "commercial"):
@@ -182,6 +186,9 @@ def _query_rows(
             " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
+    elif view == "sold":
+        # 「💰売れた」: 直近30日に一覧から消えた物件。何が早く売れるかの参考用。
+        base += " AND p.sold_at >= datetime('now', '-30 days')"
     elif view == "skipped":
         # 「🚫見送り」: 通常は一覧から隠しているものを確認するための逃げ道タブ。
         # AI の誤判定を人間が覆せるように、見られる場所は残しておく。
@@ -203,7 +210,7 @@ def _query_rows(
     # 「住める空き家だけ」: 発見系ビューでは“住めない物件”(dilapidated) と
     # “修繕が必要と明記された物件”(needs_repair) を隠す。お気に入り/通知済み/
     # 評価済み/却下 はユーザーが明示的に作った一覧なのでそのまま全件表示する。
-    if view not in ("favorites", "notified", "dismissed", "rated", "skipped"):
+    if view not in ("favorites", "notified", "dismissed", "rated", "skipped", "sold"):
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         # 再販ハード除外 (再建築不可/借地/共有持分/井戸のみ/浸水3m超 等)
@@ -291,6 +298,10 @@ def _counts(conn: Any) -> dict[str, int]:
         "pricedown": count(
             " AND EXISTS (SELECT 1 FROM price_drops WHERE property_id = p.id)" + live
         ),
+        "sold": conn.execute(
+            "SELECT COUNT(*) FROM properties p WHERE p.status = 'sold'"
+            " AND p.sold_at >= datetime('now', '-30 days')"
+        ).fetchone()[0],
         # 見送りタブ: live には見送り除外が入っているので、ここは自前で条件を書く
         "skipped": count(
             " AND EXISTS (SELECT 1 FROM resale_ai r"

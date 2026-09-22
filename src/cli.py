@@ -41,8 +41,12 @@ def db_cmd(action: str) -> None:
 def scrape(source: str | None) -> None:
     """指定ソース(or 全部)をスクレイプして DB に保存。"""
     db.init_db()
+    from . import sold as sold_rules
     sources = [source] if source else list(REGISTRY.keys())
     summary: dict[str, dict[str, int]] = {}
+    # 「今日ちゃんと取れた」収集元。0件だった収集元は売れた判定の対象にしない
+    # (サイト障害で全物件が sold 扱いになる事故を防ぐ)
+    succeeded: set[str] = set()
     with make_client() as client, db.connect() as conn:
         for name in sources:
             if name not in REGISTRY:
@@ -50,24 +54,39 @@ def scrape(source: str | None) -> None:
                 sys.exit(2)
             scraper = REGISTRY[name]()
             stats = {"raw": 0, "new": 0, "updated": 0, "skipped": 0}
-            for raw in scraper.fetch(client):
-                stats["raw"] += 1
-                listing = normalize.normalize(raw)
-                # 土地だけ / 300万円以上 は DB に入れない (purge と同じルール)
-                if purge_rules.should_skip(listing):
-                    stats["skipped"] += 1
-                    continue
-                _pid, is_new = db.upsert_listing(conn, listing)
-                if is_new:
-                    stats["new"] += 1
-                else:
-                    stats["updated"] += 1
+            try:
+                for raw in scraper.fetch(client):
+                    stats["raw"] += 1
+                    listing = normalize.normalize(raw)
+                    # 土地だけ / 300万円以上 は DB に入れない (purge と同じルール)
+                    if purge_rules.should_skip(listing):
+                        stats["skipped"] += 1
+                        # ただし既に DB にある物件なら「今日も掲載中」の印だけ付ける
+                        # (印が無いと sold 扱いになってしまう)
+                        sold_rules.touch_seen(conn, listing.source, listing.listing_id)
+                        continue
+                    _pid, is_new = db.upsert_listing(conn, listing)
+                    if is_new:
+                        stats["new"] += 1
+                    else:
+                        stats["updated"] += 1
+            except Exception as e:  # noqa: BLE001 - 1収集元の失敗で全体を止めない
+                log.warning("%s: 収集中にエラー (この収集元は売れた判定の対象外): %s", name, e)
+            if stats["raw"] > 0:
+                succeeded.add(name)
             summary[name] = stats
             log.info("%s: %s", name, stats)
+
+        # 売れた(掲載終了)判定: 成功した収集元の物件で、連続3日見かけないもの
+        sold_stats = sold_rules.mark_missing(conn, succeeded_sources=succeeded)
     for name, s in summary.items():
         click.echo(
             f"{name}: raw={s['raw']} new={s['new']} updated={s['updated']} skipped={s['skipped']}"
         )
+    click.echo(
+        f"sold: checked={sold_stats['checked']} marked={sold_stats['marked']}"
+        f" (収集成功 {len(succeeded)}/{len(sources)} 収集元)"
+    )
 
 
 @cli.command()
@@ -192,6 +211,12 @@ def stats() -> None:
                   f" AND listed_at <= date('now','-3 years')"
                   f" AND listed_at > date('now','-5 years')")
         assessed = q("SELECT COUNT(*) FROM resale_ai")
+        # 次の収集で「掲載終了」判定される見込み (3日以上見かけていない掲載中の物件)
+        pending_sold = q("SELECT COUNT(*) FROM properties WHERE status='active'"
+                         " AND substr(last_seen_at,1,10) <= date('now','-3 days')")
+        sold_total = q("SELECT COUNT(*) FROM properties WHERE status='sold'")
+        sold_30 = q("SELECT COUNT(*) FROM properties WHERE status='sold'"
+                    " AND sold_at >= datetime('now','-30 days')")
 
     where = "Turso (本番)" if db.using_libsql() else f"ローカル ({db.db_path()})"
     click.echo(f"接続先                : {where}")
@@ -207,6 +232,8 @@ def stats() -> None:
     click.echo(f"  掲載5年超(一覧から除外): {over5:>3} 件")
     click.echo(f"  掲載3〜5年(⚠️警告のみ) : {y3to5:>3} 件")
     click.echo(f"AI判定済み            : {assessed:>5} 件")
+    click.echo(f"売れた(掲載終了)      : {sold_total:>5} 件 (うち直近30日 {sold_30} 件)")
+    click.echo(f"  次回の収集で掲載終了になる見込み: {pending_sold} 件 (3日以上見かけていない)")
 
 
 @cli.command("purge")
