@@ -15,6 +15,8 @@ sold-preview で「掲載終了見込み560件」と出て異常に気づいた�
 - **✅ Mac 側の設定完了 (2026-09-22)**: ユーザーが `turso auth login`、Claude が接続情報を `.env` に書いて `launchd install` + `run-now`。**初回実行成功: 48収集元から806件取得・403ゼロ・新規13件・「見かけた」印253件更新**。空のバンク6つ(朝来/福知山/橋本/北杜/本山/養父=掲載0件)は障害ではない。
 - **⚠️ 接続の注意**: この Mac のネットワークでは `libsql://`(WebSocket)方式が400で通らず、**`https://` 形式なら接続できた**。`.env` の URL は https:// にしてある。GitHub 側は従来の libsql:// のまま(そちらは通る)。
 - **売れた検知が初日から本番で稼働**: 印が3週間ぶりに更新された結果、本当に消えていた**22件が「掲載終了」に**。終了見込みは 560→285 に減少。残りの大半は家いちば177/0円物件58 で、これらは GitHub 担当なので明朝の収集で正しく判定される見込み。
+- **接続情報ファイルは2つある(どちらも git 管理外・同じDBを指す)**: `.env`(Claude が書いた・TURSO 2項目のみ・https形式) と `config/.env`(ユーザーが手順を自分でも実行して作った・全項目入り)。cli の load_dotenv() は**プロジェクト直下の `.env` を読む**。config/.env は使われていないが、値があるので消していない。整理するなら config/.env の TURSO 以外(Discord/Dashboard等)は Mac では不要。
+- 後片付け: `launchd/`(自動生成)を .gitignore に追加、誤って消えていた `config/.env.example` を復元。
 
 ## Now (旧)
 セッション24 (2026-09-12): 「ジモティも収集候補に入れて」に対応。**調査→実装→本番投入まで完了**。
@@ -241,6 +243,7 @@ AI判定済み            : 737 件
 ## Next (Mac)
 - [x] **【セッション25】Mac の毎朝収集を有効化** — 2026-09-22 完了。毎日06:15に自動実行。状態確認は `uv run trade launchd status`。
 - [ ] 明朝(9/23)以降、`uv run trade launchd status` で `raw=` の行が毎日増えているか一度確認する。Mac がスリープしていた日は次に起きたとき実行される。
+- [ ] (小) `.env` と `config/.env` の二重管理を解消するなら、`.env` に一本化して `config/.env` を削除(Mac で使うのは TURSO の2項目だけ)。急がない。
 - [ ] (参考・完了済み手順) 当初の手順:
   1. ターミナルで `turso auth login` → ブラウザでログイン
   2. `turso db show akiyaserch --url` の結果を TURSO_DATABASE_URL に、`turso db tokens create akiyaserch` の結果を TURSO_AUTH_TOKEN にして、プロジェクト直下に `.env` を作る(config/.env.example が雛形。**.env は git 管理外**)
