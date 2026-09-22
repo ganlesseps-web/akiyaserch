@@ -306,9 +306,6 @@ def launchd_status() -> None:
     scheduler.status()
 
 
-if __name__ == "__main__":
-    cli()
-
 
 @cli.command("sold-preview")
 def sold_preview() -> None:
@@ -330,3 +327,7 @@ def sold_preview() -> None:
     for r in rows:
         flag = " ← 全滅?" if r["pending"] == r["total"] and r["total"] > 0 else ""
         click.echo(f"{r['source']:<32}{r['total']:>6}{r['pending']:>8}  {r['latest_seen']}{flag}")
+
+
+if __name__ == "__main__":
+    cli()
