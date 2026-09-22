@@ -12,7 +12,9 @@ sold-preview で「掲載終了見込み560件」と出て異常に気づいた�
 **③ 対策(ユーザー選択: Macで毎朝収集)** — コード側は完了、**Mac側の設定が未完了**
 - `scrape --group athome|other|all` を追加。**GitHub は `--group other`(25収集元)** に変更済み
 - `scheduler.py` を書き直し: 毎日06:15 JST に `scrape --group athome`(48収集元)を Mac で実行し本番Tursoに直接書く。`.env` に TURSO 接続情報が無いと install を止める安全弁付き
-- **未完了: Mac の .env に TURSO_DATABASE_URL / TURSO_AUTH_TOKEN を置く必要がある**。GitHub Secrets は読み戻せないため、Turso CLI(このMacに入っている)でログインして再発行する → 下記 Next (Mac)
+- **✅ Mac 側の設定完了 (2026-09-22)**: ユーザーが `turso auth login`、Claude が接続情報を `.env` に書いて `launchd install` + `run-now`。**初回実行成功: 48収集元から806件取得・403ゼロ・新規13件・「見かけた」印253件更新**。空のバンク6つ(朝来/福知山/橋本/北杜/本山/養父=掲載0件)は障害ではない。
+- **⚠️ 接続の注意**: この Mac のネットワークでは `libsql://`(WebSocket)方式が400で通らず、**`https://` 形式なら接続できた**。`.env` の URL は https:// にしてある。GitHub 側は従来の libsql:// のまま(そちらは通る)。
+- **売れた検知が初日から本番で稼働**: 印が3週間ぶりに更新された結果、本当に消えていた**22件が「掲載終了」に**。終了見込みは 560→285 に減少。残りの大半は家いちば177/0円物件58 で、これらは GitHub 担当なので明朝の収集で正しく判定される見込み。
 
 ## Now (旧)
 セッション24 (2026-09-12): 「ジモティも収集候補に入れて」に対応。**調査→実装→本番投入まで完了**。
@@ -237,13 +239,15 @@ AI判定済み            : 737 件
 さらに 6自治体追加 + 「定住条件付き譲渡」検出機能を実装 (2026-05-28 セッション3)。akiya-athome 系: 朝来0/舞鶴7/松阪9/宍粟16 = 32件 + 独自: 東吉野24/十津川8 = 32件 = 計+64件。熊野市 (Jimdo) と真庭市 (cocomaniwa.com) は構造複雑のため次セッション送り。normalize.detect_settlement_offer() で「無償譲渡/定住条件付/試住制度/改修費返済不要/賃貸後譲渡/○年定住で…/譲渡可」等を検出、DB に settlement_offer 列追加、Discord embed の title に 🎯 prefix + 専用フィールド表示。現在 27自治体 scraper。セッション4 (2026-05-28): 「空き家率高い県 (山梨/和歌山/徳島/高知/山口) で内陸・補助金あり」要望に対応。filter allowlist に山梨/高知/山口 を追加、5自治体 scraper 追加 (北杜/橋本/三好/本山/美祢、全 akiya-athome 系 = サブクラス追加だけで対応)。神山町は専用バンク無し (全国版に登録のみ) で見送り。実物件は三好25 + 美祢49 = +74件、他3自治体 (北杜/橋本/本山) は現在 0 件だが scraper は登録済 (将来追加時に自動取得)。総自治体数 27→32。本番反映完了: GHA scrape 12分・三好25+美祢49=新規74件投入、notify は `scanned=629 passed=49 sent=49` で Discord に49件のダイジェスト送信成功。
 
 ## Next (Mac)
-- [ ] 🚨 **【セッション25・最優先】Mac の毎朝収集を有効化する(これをやるまで48自治体の新着が止まったまま)**。手順:
+- [x] **【セッション25】Mac の毎朝収集を有効化** — 2026-09-22 完了。毎日06:15に自動実行。状態確認は `uv run trade launchd status`。
+- [ ] 明朝(9/23)以降、`uv run trade launchd status` で `raw=` の行が毎日増えているか一度確認する。Mac がスリープしていた日は次に起きたとき実行される。
+- [ ] (参考・完了済み手順) 当初の手順:
   1. ターミナルで `turso auth login` → ブラウザでログイン
   2. `turso db show akiyaserch --url` の結果を TURSO_DATABASE_URL に、`turso db tokens create akiyaserch` の結果を TURSO_AUTH_TOKEN にして、プロジェクト直下に `.env` を作る(config/.env.example が雛形。**.env は git 管理外**)
   3. `uv run trade launchd install` → 登録
   4. `uv run trade launchd run-now` → 今すぐ1回実行して動作確認。数分後 `uv run trade launchd status` で `raw=` の行が出れば成功
   5. 翌朝以降は 06:15 に自動。Mac がスリープなら次に起きたとき実行される
-- [ ] 上記が動いたら `gh workflow run stats.yml --ref main` で「次回の収集で掲載終了になる見込み」が560→数十件に減っていることを確認(=48自治体の印が更新された証拠)
+- [x] 終了見込みが 560→285 に減ったことを確認済み(48自治体の印が更新された証拠)。285 の内訳は家いちば/0円物件(GitHub担当)が中心で、明朝の GitHub 収集で判定される
 - [x] ✅ **【セッション17】本番DBの削除** — 2026-08-13 06:14 に実行済み(run 31673084600, 1,155件削除)。セッション18で再確認したところ対象0件。**もう実行不要**。
 - [ ] (旧・完了済みのため対応不要) 削除を実行するか判断 — 下見済み(1,891件中**1,155件が対象**、残り736件)。誤爆チェック済み。**ユーザー確認待ちで未実行**。
   - 実行するなら: `gh workflow run purge.yml --ref main -f confirm=DELETE`
