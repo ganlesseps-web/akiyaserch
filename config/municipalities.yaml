@@ -121,3 +121,10 @@ municipalities:
 
   # ===== 鹿児島県 =====
   霧島市:        {prefecture: 鹿児島県, population: 123135, rental_demand: true, tourism: true}  # 京セラ国分工場・ソニー・陸自駐屯地。観光(霧島温泉)はあるが民泊出口は新燃岳リスクで不可と判断(2026-08)
+
+  # ===== セッション26追加: 島根県・長崎県 (ユーザー移住候補。population は概数) =====
+  松江市:        {prefecture: 島根県, population: 194000, rental_demand: true,  tourism: true}   # 県庁所在地・島根大学、松江城/宍道湖
+  出雲市:        {prefecture: 島根県, population: 172000, rental_demand: true,  tourism: true}   # 出雲大社、村田製作所系の工場
+  雲南市:        {prefecture: 島根県, population: 35000,  rental_demand: false, tourism: false}  # 内陸・松江/出雲へ車30〜40分
+  奥出雲町:      {prefecture: 島根県, population: 11500,  rental_demand: false, tourism: true}   # 中国山地・たたら製鉄/仁多米、雪が多め
+  五島市:        {prefecture: 長崎県, population: 34000,  rental_demand: false, tourism: true}   # 福江島(+奈留島)・離島。教会群(世界遺産)
