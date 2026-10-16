@@ -645,3 +645,33 @@ class YamazoeAkiyabankScraper(AkiyaAthomeBaseScraper):
     subdomain = "yamazoe-v29322"
     area_path = ""
     prefecture = "奈良県"
+
+
+# --- セッション26追加: 島根(松江/雲南/奥出雲) (2026-10 実測で予算内39件。ユーザー移住前提) ---
+
+class MatsueAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """島根県松江市 (matsue-c32201.akiya-athome.jp). 県庁所在地。
+    実測: 戸建11件中 予算内8件 (280〜300万が中心・最安55万)。
+    海沿いの旧町 (美保関/島根/鹿島) は district_blacklist で除外。"""
+    source = "matsue_akiyabank"
+    subdomain = "matsue-c32201"
+    area_path = ""
+    prefecture = "島根県"
+
+
+class UnnanAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """島根県雲南市 (unnan-c32209.akiya-athome.jp). 内陸・松江/出雲へ車30〜40分。
+    実測: 戸建23件中 予算内16件・最安50万。"""
+    source = "unnan_akiyabank"
+    subdomain = "unnan-c32209"
+    area_path = ""
+    prefecture = "島根県"
+
+
+class OkuizumoAkiyabankScraper(AkiyaAthomeBaseScraper):
+    """島根県奥出雲町 (okuizumo-t32343.akiya-athome.jp). 中国山地の山間で雪が多め
+    (豪雪地帯指定の有無は未確認)。実測: 戸建23件中 予算内15件。ユーザー希望で採用。"""
+    source = "okuizumo_akiyabank"
+    subdomain = "okuizumo-t32343"
+    area_path = ""
+    prefecture = "島根県"
