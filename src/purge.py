@@ -84,7 +84,28 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
     district = district_skip_reason(listing.city, listing.address)
     if district:
         return district
+    # 農地とセット販売の物件 (2026-10-18 ユーザー指示: 農地は取得できない可能性が高い)
+    from .normalize import is_farmland_bundled
+    farm, _why = is_farmland_bundled(listing.title, listing.body)
+    if farm:
+        return "農地付き"
     return None
+
+
+def farmland_ids(conn: Any, *, keep_rated: bool = True) -> list[int]:
+    """既にDBにある「農地付き」物件の id (お気に入り/星評価は守る)。
+
+    判定は本文の文章で行うため SQL ではなく Python で走査する。
+    """
+    from .normalize import is_farmland_bundled
+    sql = (
+        "SELECT p.id, p.title, p.body FROM properties p"
+        " WHERE NOT EXISTS (SELECT 1 FROM favorites f WHERE f.property_id = p.id)"
+    )
+    if keep_rated:
+        sql += " AND NOT EXISTS (SELECT 1 FROM ratings r WHERE r.property_id = p.id)"
+    return [r["id"] for r in conn.execute(sql).fetchall()
+            if is_farmland_bundled(r["title"], r["body"])[0]]
 
 
 def _target_sql(*, keep_rated: bool = True) -> str:
@@ -154,7 +175,14 @@ def count_targets(
         ).fetchall()
     ]
 
+    # 農地付き (上の 土地/300万以上 と重ならない分だけ数える)
+    farm_ids = farmland_ids(conn, keep_rated=keep_rated)
+    tgt_ids = {r[0] for r in conn.execute(tgt, (price_cutoff,)).fetchall()}
+    farm_only = [i for i in farm_ids if i not in tgt_ids]
+    total += len(farm_only)
+
     return {
+        "farmland": len(farm_only),
         "all": all_active,
         "total": total,
         "land": land,
@@ -179,6 +207,14 @@ def purge(
     for t in CHILD_TABLES:
         conn.execute(f"DELETE FROM {t} WHERE property_id IN ({tgt})", (price_cutoff,))
     conn.execute(f"DELETE FROM properties WHERE id IN ({tgt})", (price_cutoff,))
+
+    ids = farmland_ids(conn, keep_rated=keep_rated)
+    for i in range(0, len(ids), 200):
+        chunk = ids[i:i + 200]
+        qs = ",".join("?" * len(chunk))
+        for t in CHILD_TABLES:
+            conn.execute(f"DELETE FROM {t} WHERE property_id IN ({qs})", tuple(chunk))
+        conn.execute(f"DELETE FROM properties WHERE id IN ({qs})", tuple(chunk))
     return 0
 
 
@@ -195,7 +231,8 @@ def render_report(stats: dict[str, Any], *, applied: bool) -> str:
         f"  ├ 土地だけの物件   : {stats['land']:,} 件"
         f" (うち価格が不明なもの {stats['land_no_price']:,} 件)",
         f"  ├ 300万円以上      : {stats['pricey']:,} 件",
-        f"  └ 両方に当てはまる : {stats['both']:,} 件  ← 上2つの重複分",
+        f"  ├ 両方に当てはまる : {stats['both']:,} 件  ← 上2つの重複分",
+        f"  └ 農地付き         : {stats.get('farmland', 0):,} 件  (農地は取得できない可能性が高いため)",
         "",
         f"守られた物件  : {stats['protected']:,} 件 (★お気に入り・星評価を付けたものは消しません)",
         f"残る物件      : {stats['remaining']:,} 件",

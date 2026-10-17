@@ -380,6 +380,43 @@ def detect_resale_warnings(title: str | None, body: str | None) -> list[str]:
     return tags
 
 
+# 「農地とセットで売る」物件の判定 (2026-10-18 ユーザー指示で除外対象)。
+# 理由: 農地の取得には農業委員会の許可(農地法3条)が要り、取得できない可能性が高いため。
+# ※「家庭菜園ができる庭」は宅地の一部なので対象外 (「家庭菜園」単独では拾わない)。
+# ※「農地転用済み」は農地ではなくなっているので対象外。
+_FARMLAND_POS = re.compile(
+    r"農地(付き|付|つき|あり|有り|も一緒|とセット|と一緒|込み|を含む|含む|も含|も譲|の譲渡|と共に|と合わせ)"
+    r"|田畑(付き|付|つき|あり|有り|も)"
+    r"|(?<![家庭菜園])畑(付き|付|つき)"
+    r"|田んぼ(付き|付|つき|あり|も)"
+    r"|(?<!庭)田(付き|付)"
+    r"|地目\s*[:：]?\s*(田|畑)(?![^\s、。|]*宅地)"
+    r"|農地法\s*(第?3条|の許可)"
+    r"|農業委員会(の許可|への申請|の承認)"
+)
+_FARMLAND_NEG = re.compile(
+    r"農地(は|を)?(含みません|含まない|除く|除き|別売|対象外|ありません|なし|無し)"
+    r"|田畑(は|を)?(含みません|含まない|除く|別売|なし)"
+    r"|農地転用済"
+    # 「耕作希望者に隣接地の農地あり」= セット販売ではなく任意の紹介
+    r"|希望(者|の方)?(に|には|へ)[^。]{0,15}農地"
+    r"|農地は(別途|ご希望|希望)"
+)
+
+
+def is_farmland_bundled(title: str | None, body: str | None) -> tuple[bool, str]:
+    """農地とセットで売られている物件か。(True, ヒットした語) を返す。"""
+    text = f"{title or ''} {body or ''}"
+    if not text.strip():
+        return False, ""
+    m = _FARMLAND_POS.search(text)
+    if not m:
+        return False, ""
+    if _FARMLAND_NEG.search(text):
+        return False, ""
+    return True, m.group(0)
+
+
 def classify_property_type(title: str | None, body: str | None) -> str:
     """物件タイプ分類. Returns one of:
        'house'      — 一軒家・戸建て・古民家・農家の家など
