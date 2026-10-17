@@ -81,6 +81,7 @@ from .higashiyoshino import HigashiyoshinoScraper
 from .totsukawa import TotsukawaScraper
 from .izumo_akiyabank import IzumoAkiyabankScraper
 from .goto_akiyabank import GotoAkiyabankScraper
+from .nagasaki_akiyabank import NagasakiAkiyabankScraper
 
 REGISTRY: dict[str, type[Scraper]] = {
     "minna_0en": MinnaZeroEnScraper,
@@ -161,4 +162,5 @@ REGISTRY: dict[str, type[Scraper]] = {
     "okuizumo_akiyabank": OkuizumoAkiyabankScraper,
     "izumo_akiyabank": IzumoAkiyabankScraper,
     "goto_akiyabank": GotoAkiyabankScraper,
+    "nagasaki_akiyabank": NagasakiAkiyabankScraper,
 }

@@ -127,4 +127,5 @@ municipalities:
   出雲市:        {prefecture: 島根県, population: 172000, rental_demand: true,  tourism: true}   # 出雲大社、村田製作所系の工場
   雲南市:        {prefecture: 島根県, population: 35000,  rental_demand: false, tourism: false}  # 内陸・松江/出雲へ車30〜40分
   奥出雲町:      {prefecture: 島根県, population: 11500,  rental_demand: false, tourism: true}   # 中国山地・たたら製鉄/仁多米、雪が多め
+  長崎市:        {prefecture: 長崎県, population: 395000, rental_demand: true, tourism: true}   # 県庁所在地・長崎大学・造船、グラバー園等の観光(世界遺産)
   五島市:        {prefecture: 長崎県, population: 34000,  rental_demand: false, tourism: true}   # 福江島(+奈留島)・離島。教会群(世界遺産)
