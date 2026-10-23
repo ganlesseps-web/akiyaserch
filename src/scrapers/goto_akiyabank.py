@@ -9,7 +9,7 @@
 戦略:
 - 一覧 index.html → rel="next" (index_2_4___0_.html …) を辿る。1ページ40件
 - 一覧カードには 題名(物件No.+町名)/価格(売却・賃貸)/地区 しか無い
-- 購入可で 300万円未満 or 要相談 の物件だけ詳細ページを読む
+- 購入可で 400万円未満 (交渉候補を含む) or 要相談 の物件だけ詳細ページを読む
   (トイレ=汲み取り / 海までの距離 / 空き家になった年 / 補修の要否 を本文に入れる)
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 LIST_URL = "https://goto.nagasaki-tabinet.com/iju/vacant-house/index.html"
 MAX_PAGES = 10
-DETAIL_PRICE_LIMIT = 3_000_000
+DETAIL_PRICE_LIMIT = 4_000_000  # 五島市は値引き交渉の対象地域 (negotiation) なので400万未満まで読む
 ID_RE = re.compile(r"detail_(\d+)\.html")
 # 「売却：2,000,000円」「購入：要相談」
 SALE_RE = re.compile(r"(?:売却|購入)[：:]\s*([\d,.]+円|要相談)")

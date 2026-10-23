@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import db, enrich, municipalities
+from .. import db, enrich, municipalities, negotiation
 
 app = FastAPI(title="trade dashboard")
 
@@ -97,6 +97,19 @@ SKIPPED_EXCLUSION = (
 STALE_YEARS = 5
 STALE_EXCLUSION = (
     f" AND (p.listed_at IS NULL OR p.listed_at > date('now', '-{STALE_YEARS} years'))"
+)
+
+# 交渉候補 (300万〜400万円) は「🤝交渉候補」タブ専用。通常の一覧には出さない。
+# 価格不明 (NULL) は従来通り通常の一覧に出す。
+NORMAL_PRICE = f" AND (p.price IS NULL OR p.price < {negotiation.NORMAL_PRICE_MAX})"
+
+# 交渉候補タブの並び: 印の多い順 (掲載が長い・値下げ歴) → 安い順
+_NEGO_RANK = (
+    "((CASE WHEN EXISTS (SELECT 1 FROM price_drops d WHERE d.property_id = p.id)"
+    " THEN 1 ELSE 0 END)"
+    " + (CASE WHEN p.listed_at IS NOT NULL AND p.listed_at <= date('now', '-1 year')"
+    " THEN 1 WHEN p.listed_at IS NULL AND p.first_seen_at <= date('now', '-180 days')"
+    " THEN 1 ELSE 0 END))"
 )
 
 # 判定の良い順 (検討可 → 警告 → 未判定 → 見送り)
@@ -197,6 +210,11 @@ def _query_rows(
             "             WHERE r.property_id = p.id AND r.verdict = '見送り')"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
+    elif view == "nego":
+        # 「🤝交渉候補」: 48市町村の調査対象地域で 200万円超〜400万円未満。
+        # 掲載が長い・値下げ歴ありの物件に印を付け、印の多い順に並べる。
+        base += negotiation.band_sql()
+        base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
     elif view == "free":
         # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
         # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
@@ -221,7 +239,12 @@ def _query_rows(
         base += SKIPPED_EXCLUSION
         # 掲載から5年超の長期売れ残りは一覧に出さない (ユーザー指定の除外条件)。
         # listed_at が NULL (未取得) の物件は除外しない = デフォルト通過。
-        base += STALE_EXCLUSION
+        # ※交渉候補タブでは出す (長く売れ残っている家ほど値引きの余地があるため)
+        if view != "nego":
+            base += STALE_EXCLUSION
+            base += NORMAL_PRICE
+    elif view == "skipped":
+        base += NORMAL_PRICE
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -257,7 +280,9 @@ def _query_rows(
     elif verdict == "未判定":
         base += " AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id)"
 
-    if view == "pricedown":
+    if view == "nego" and sort == "new":
+        sort_sql = f"{_NEGO_RANK} DESC, p.price ASC, p.first_seen_at DESC"
+    elif view == "pricedown":
         # 値下げタブは常に「値下がりが新しい順」で並べる (このタブの主役は値下げなので)。
         sort_sql = (
             "(SELECT dropped_at FROM price_drops WHERE property_id = p.id"
@@ -280,9 +305,9 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
         + SKIPPED_EXCLUSION   # 見送りは一覧に出さない (件数も揃える)
-        + STALE_EXCLUSION     # 掲載5年超も同様
-
     )
+    nego_live = live   # 交渉候補タブ: 5年超も出す・300万円以上も出す
+    live = live + STALE_EXCLUSION + NORMAL_PRICE  # 掲載5年超・交渉候補は通常の一覧に出さない
 
     def count(extra: str = "") -> int:
         return conn.execute(
@@ -307,7 +332,9 @@ def _counts(conn: Any) -> dict[str, int]:
             " AND EXISTS (SELECT 1 FROM resale_ai r"
             "             WHERE r.property_id = p.id AND r.verdict = '見送り')"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+            + NORMAL_PRICE
         ),
+        "nego": count(negotiation.band_sql() + nego_live),
         "favorites": conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0],
         "notified": conn.execute(
             "SELECT COUNT(DISTINCT property_id) FROM notifications"
@@ -544,6 +571,7 @@ def _render_stars(pid: int, rating: int) -> str:
 TEMPLATES.env.globals["render_stars"] = _render_stars
 TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
 TEMPLATES.env.globals["warning_chips"] = _warning_chips
+TEMPLATES.env.globals["nego_marks"] = negotiation.marks
 
 
 @app.get("/healthz")

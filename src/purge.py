@@ -6,6 +6,7 @@ scrape 側のスキップと purge 側の削除で**同じ条件**を使うこ�
 対象 (2026-08-13 ユーザー指示):
 - 土地だけの物件 (property_type='land') … 価格に関係なく不要
 - 300万円以上の物件 … 予算外。※価格不明(NULL)は「300万以上と確定していない」ので残す
+  ※例外: 値引き交渉の対象地域 (negotiation.py) の 300万〜400万円未満は残す (2026-10-23)
 
 守るもの:
 - ★お気に入り / 星評価 を付けた物件は、条件に当てはまっても削除しない
@@ -18,7 +19,7 @@ from typing import Any
 
 import yaml
 
-from . import db
+from . import db, negotiation
 
 PRICE_CUTOFF_YEN = 3_000_000  # config/filters.yaml の price_max と揃える (テストで担保)
 
@@ -79,7 +80,8 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
     """
     if listing.property_type == "land":
         return "土地"
-    if listing.price is not None and listing.price >= price_cutoff:
+    if (listing.price is not None and listing.price >= price_cutoff
+            and not negotiation.keep_pricey(listing.price, listing.city, listing.address)):
         return "300万円以上"
     district = district_skip_reason(listing.city, listing.address)
     if district:
@@ -108,6 +110,12 @@ def farmland_ids(conn: Any, *, keep_rated: bool = True) -> list[int]:
             if is_farmland_bundled(r["title"], r["body"])[0]]
 
 
+def _pricey_sql() -> str:
+    """「300万円以上で消す」条件 (パラメータは price_cutoff 1個)。交渉候補は除く。"""
+    return (f"(p.price IS NOT NULL AND p.price >= ?"
+            f" AND NOT {negotiation.keep_pricey_sql()})")
+
+
 def _target_sql(*, keep_rated: bool = True) -> str:
     """削除対象の id を選ぶ SELECT (パラメータは price_cutoff 1個)。
 
@@ -116,7 +124,7 @@ def _target_sql(*, keep_rated: bool = True) -> str:
     sql = (
         "SELECT p.id FROM properties p"
         " WHERE (p.property_type = 'land'"
-        "        OR (p.price IS NOT NULL AND p.price >= ?))"
+        f"        OR {_pricey_sql()})"
         "   AND NOT EXISTS (SELECT 1 FROM favorites f WHERE f.property_id = p.id)"
     )
     if keep_rated:
@@ -143,7 +151,7 @@ def count_targets(
         (price_cutoff,),
     ).fetchone()[0]
     pricey = conn.execute(
-        f"SELECT COUNT(*) FROM properties p WHERE p.price IS NOT NULL AND p.price >= ?"
+        f"SELECT COUNT(*) FROM properties p WHERE {_pricey_sql()}"
         f" AND p.id IN ({tgt})",
         (price_cutoff, price_cutoff),
     ).fetchone()[0]
@@ -151,7 +159,7 @@ def count_targets(
 
     protected = conn.execute(
         "SELECT COUNT(*) FROM properties p"
-        " WHERE (p.property_type='land' OR (p.price IS NOT NULL AND p.price >= ?))"
+        f" WHERE (p.property_type='land' OR {_pricey_sql()})"
         "   AND (EXISTS (SELECT 1 FROM favorites f WHERE f.property_id = p.id)"
         "        OR EXISTS (SELECT 1 FROM ratings r WHERE r.property_id = p.id))",
         (price_cutoff,),

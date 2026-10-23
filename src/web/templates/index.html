@@ -51,6 +51,11 @@
   .warn-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
   .warn-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
                background: #fff6e0; color: #8a6100; border: 1px solid #f0dfae; white-space: nowrap; }
+  .nego-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .nego-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
+               background: #eef6ee; color: #2f6b3a; border: 1px solid #cfe3d1; white-space: nowrap; }
+  .nego-note { font-size: 0.8rem; color: #555; background: #f4f8f4; border: 1px solid #dde9de;
+               border-radius: 6px; padding: 0.5rem 0.7rem; margin: 0.4rem 0; }
   .score-badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 0.75rem;
                  background: #fff8e0; color: #946800; font-weight: 600; }
   .score-badge[data-score="8"], .score-badge[data-score="9"], .score-badge[data-score="10"] {
@@ -78,13 +83,16 @@
 
 <nav>
   {% for v, label in [
-      ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("unread","未読"),("free","🆓0円物件"),
+      ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)"),("sold","💰売れた(30日)")] %}
     <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
+{% if view == 'nego' %}
+<p class="nego-note">🤝 交渉候補：調査した48市町村で 200万〜400万円の家です。値引き交渉で200万円前後まで下がるかもしれない家として載せています。「📅 掲載が長い」「🔻 値下げ歴あり」「💬 価格相談の記載」の印が多い順に並べています。掲載5年以上の家もここには出します。</p>
+{% endif %}
 <form class="controls" method="get">
   <input type="hidden" name="view" value="{{view}}">
   <select name="pref" onchange="var c=this.form.querySelector('[name=city]'); if(c){c.value='';} this.form.submit()" title="都道府県でしぼり込む">
@@ -167,6 +175,10 @@
       <span style="color:#aaa;">{{ r['source'] }} ／ {{ r['first_seen_at'][:10] }}</span>
       {% if r['ai_reason'] %}<br><span style="color:#888;font-style:italic;">{{ r['ai_reason'] }}</span>{% endif %}
     </div>
+    {% if view == 'nego' %}
+      {% set marks = nego_marks(r) %}
+      {% if marks %}<div class="nego-row">{% for m in marks %}<span class="nego-chip">{{ m }}</span>{% endfor %}</div>{% endif %}
+    {% endif %}
     {% set chips = warning_chips(r) %}
     {% if chips %}
       <div class="warn-row">
