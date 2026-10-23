@@ -31,6 +31,11 @@ INTER_REQUEST_SECONDS = 1.2
 
 # 「情報公開日」「登録日」などの隣のセルにある和暦なし日付
 _DATE_RE = re.compile(r"(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日")
+# 京丹後市の空き家バンクは「公開日：2018/07/12」のスラッシュ表記 (2026-10-23 追加)
+# 日付が空欄だと直後のリンク文字の日付を拾いかねないので、HTML上で「公開日：」の
+# 直後 (間はスペースだけ・タグを挟まない) にある日付だけを読む。
+_SLASH_DATE_RE = re.compile(
+    r"公開日[：:](?:&nbsp;|\s|\xa0)*(\d{4})/(\d{1,2})/(\d{1,2})")
 _LABELS = ("情報公開日", "情報登録日", "登録日", "掲載日", "公開日")
 
 
@@ -49,6 +54,14 @@ def parse_listed_at(html: bytes | str) -> str | None:
                         return date(y, mo, d).isoformat()
                     except ValueError:
                         return None
+    raw = html.decode("utf-8", "ignore") if isinstance(html, bytes) else html
+    m = _SLASH_DATE_RE.search(raw)
+    if m:
+        y, mo, d = (int(x) for x in m.groups())
+        try:
+            return date(y, mo, d).isoformat()
+        except ValueError:
+            return None
     # テーブル以外のレイアウト向けフォールバック (ラベルの直後にある日付)
     text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     for lb in _LABELS:
@@ -254,13 +267,14 @@ def enrich_missing(conn: Any, *, limit: int = 200) -> dict[str, int]:
                 stats["city"] += 1
                 stats["found"] += 1
 
-    # --- 通信が必要なもの (アットホーム系 / 楽園信州) ---
+    # --- 通信が必要なもの (アットホーム系 / 楽園信州 / 京丹後市) ---
     rows = conn.execute(
         """
         SELECT id, url, body, source FROM properties
         WHERE status = 'active'
           AND enriched_at IS NULL
-          AND (url LIKE '%akiya-athome.jp%' OR url LIKE '%rakuen-akiya.jp%')
+          AND (url LIKE '%akiya-athome.jp%' OR url LIKE '%rakuen-akiya.jp%'
+               OR url LIKE '%kyotango-akiya.jp%')
         ORDER BY first_seen_at DESC
         LIMIT ?
         """,

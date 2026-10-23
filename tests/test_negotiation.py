@@ -159,3 +159,17 @@ def test_page_renders_nego_tab(tmp_path, monkeypatch):
     assert "📅 掲載" in r.text
     # 通常の一覧には出ない
     assert "物件band" not in TestClient(webapp.app).get("/").text
+
+
+# ---- 京丹後市の掲載開始日 (「掲載が長い」の印の材料) ----
+
+def test_kyotango_slash_date():
+    from src.enrich import parse_listed_at
+    html = "<div><p>京丹後市</p><p>公開日：&nbsp;2018/07/12 <a href='x'>戻る</a></p></div>"
+    assert parse_listed_at(html) == "2018-07-12"
+
+
+def test_kyotango_blank_date_is_none():
+    from src.enrich import parse_listed_at
+    html = "<div><p>公開日：&nbsp; <a href='x'>2020/01/01 のお知らせ</a></p></div>"
+    assert parse_listed_at(html) is None
