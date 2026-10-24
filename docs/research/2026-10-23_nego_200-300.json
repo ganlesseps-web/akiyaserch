@@ -581,24 +581,24 @@
   {
    "city": "綾部市",
    "pref": "京都府",
-   "address": "京都府 綾部市井根町",
-   "price_yen": 2300000,
-   "land_m2": "458.0",
-   "building_m2": "未確認",
+   "address": "京都府綾部市井根町（口上林・T-463）",
+   "price_yen": 1400000,
+   "land_m2": "458",
+   "building_m2": "100",
    "built": "不詳（手元データ）",
    "parking": "未確認",
-   "distance_super": "未確認",
+   "distance_super": "未確認（綾部市役所まで12.4km・山あいの口上林地区）",
    "distance_medical": "未確認",
    "rebuild": "未確認",
-   "repair_risk": "未確認",
-   "hazard": "未確認",
+   "repair_risk": "修繕費用は入居者負担。倉庫1棟付き",
+   "hazard": "敷地の一部が土砂災害特別警戒区域、敷地は土砂災害警戒区域（急傾斜地）と明記",
    "community_note": "移住立国あやべ（前回調査）",
    "wine_distance": "丹波ワインまで車約40〜50分（前回調査の概算）",
-   "url": "https://ayabe-c26203.akiya-athome.jp/bukken/detail/buy/%E7%B6%BE%E9%83%A8%E5%B8%82%E5%A3%B2%E6%88%B8%E5%BB%BA%E4%BD%8F%E5%AE%85-39961",
-   "status": "未確認（2026-10-23に開こうとしたが、全国版空き家バンク（akiya-athome）全体が「只今メンテナンス中」で10分以上表示されず。掲載継続は再確認が必要）",
-   "checked": "2026-10-23",
+   "url": "https://www.homes.co.jp/akiyabank/b-33267/",
+   "status": "掲載中（2026-10-24 LIFULL HOME'Sで確認・230万→140万円に値下げ）",
+   "checked": "2026-10-24",
    "source": "綾部市空き家バンク（akiya-athome）",
-   "negotiation": "掲載開始2025-06-06で1年以上（手元データ）。値下げ歴なし",
+   "negotiation": "手元データの230万円から140万円に値下げ済み（掲載開始 2025-06-06・1年以上）。土砂災害の特別警戒区域を材料にさらに交渉できるが、山あいで暮らしの便利さは要確認",
    "listed_since": "2025-06-06",
    "db_id": 647
   },
@@ -608,10 +608,10 @@
    "address": "山梨県 韮崎市穂坂町三之蔵",
    "price_yen": 2500000,
    "land_m2": "284.63",
-   "building_m2": "未確認",
+   "building_m2": "148.61",
    "built": "築75年（手元データ）",
    "parking": "未確認",
-   "distance_super": "未確認",
+   "distance_super": "スーパーまで4.6km・コンビニ3.3km（掲載記載）",
    "distance_medical": "未確認",
    "rebuild": "未確認",
    "repair_risk": "未確認",
@@ -619,12 +619,13 @@
    "community_note": "韮崎市移住定住促進課・お試し住宅あり（前回調査）",
    "wine_distance": "穂坂はワインぶどう産地そのもの（前回調査）",
    "url": "https://nirasaki-c19207.akiya-athome.jp/bukken/detail/buy/%E9%9F%AE%E5%B4%8E%E5%B8%82%E5%A3%B2%E6%88%B8%E5%BB%BA%E4%BD%8F%E5%AE%85-32495",
-   "status": "未確認（2026-10-23に開こうとしたが、全国版空き家バンク（akiya-athome）全体が「只今メンテナンス中」で10分以上表示されず。掲載継続は再確認が必要）",
-   "checked": "2026-10-23",
-   "source": "韮崎市空き家バンク（akiya-athome）",
+   "status": "掲載中",
+   "checked": "2026-10-24",
+   "source": "韮崎市空き家バンク（akiya-athome）／2026-10-24 LIFULL HOME'S で掲載中を確認",
    "negotiation": "掲載開始2024-06-06で約2年4か月売れ残り（手元データ）。築75年の老朽木造。値下げ歴なし",
    "listed_since": "2024-06-06",
-   "db_id": 1643
+   "db_id": 1643,
+   "url_mirror": "https://www.homes.co.jp/akiyabank/b-36064/"
   },
   {
    "city": "南丹市",
@@ -697,6 +698,30 @@
    "negotiation": "未確認（ページを開けず）。値下げ歴なし",
    "listed_since": "未確認",
    "db_id": 786
+  },
+  {
+   "city": "千曲市",
+   "pref": "長野県",
+   "address": "長野県千曲市羽尾3240-1（戸倉・五加エリア・CA-0124）",
+   "price_yen": 2500000,
+   "land_m2": "356.80",
+   "building_m2": "68.73",
+   "built": "1991年10月（築35年）",
+   "parking": "あり2台",
+   "distance_super": "未確認",
+   "distance_medical": "未確認",
+   "rebuild": "未確認",
+   "repair_risk": "多少の補修が必要（入居者負担）。上水道・下水道・水洗洋式トイレ・プロパン。平屋1LDK（LDK17.5帖＋和室10帖）",
+   "hazard": "未確認",
+   "community_note": "千曲市ふるさと振興課 026-273-1111。上田・千曲・東御の合同空き家ツアー（11/22〜23）あり",
+   "wine_distance": "千曲川ワインバレー（市内に造り手4事業者）。戸倉・上山田温泉の近く",
+   "negotiation": "掲載は2026-10-09と新しい。値引き材料は「前の道が狭く勾配が大きい」と補修費（入居者負担）。築35年と今回の候補でいちばん新しい部類",
+   "listed_since": "2026-10-09",
+   "url": "https://www.chikuma-iju.jp/blog/akiya_no.0124",
+   "status": "掲載中",
+   "checked": "2026-10-24",
+   "source": "千曲市 空き家バンク（2026-10-24 追加）",
+   "db_id": null
   }
  ],
  "excluded": [
@@ -729,6 +754,10 @@
    "db_id": 2163,
    "url": "https://jmty.jp/shiga/est-buy/article-1pab35",
    "reason": "掲載中（2026-10-23確認、価格は280万円→248万円に値下げ）だが除外: 安曇川リッチランドという山あいの別荘地で、冬（12月中旬〜3月中旬）は凍結防止で水道を止める・除雪車なし・営利利用禁止・管理費年3万円。通年の暮らしに向かない。汲み取りトイレ"
+  },
+  {
+   "url": "https://www.homes.co.jp/akiyabank/b-1647/",
+   "reason": "綾部市安国寺町T-211: 180万→100万円に値下げされていたが、畑134㎡が付属（農地とセット）のため除外 (2026-10-24)"
   }
  ]
 }

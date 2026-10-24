@@ -1015,6 +1015,25 @@
      "source": "移住立国あやべ T-531",
      "status": "掲載中",
      "checked": "2026-10-23"
+    },
+    {
+     "address": "京都府綾部市内久井町（志賀郷地区・T-517）",
+     "price_yen": 800000,
+     "land_m2": "783",
+     "building_m2": "126.28",
+     "built": "未確認",
+     "parking": "未確認",
+     "distance_super": "未確認（綾部市役所まで15.3km）",
+     "distance_medical": "未確認",
+     "rebuild": "未確認",
+     "repair_risk": "修繕費用は買主負担と明記。物置2棟・倉庫1棟付き。自治会加入が必要",
+     "hazard": "未確認",
+     "community_note": "志賀郷は移住者に人気の地区。あやべ定住サポート総合窓口 0773-42-4270",
+     "wine_distance": "丹波ワインまで車40〜50分（目安）",
+     "url": "https://www.homes.co.jp/akiyabank/b-39462/",
+     "status": "掲載中",
+     "checked": "2026-10-24",
+     "source": "LIFULL HOME'S 空き家バンク（綾部市の空き家バンク物件・2026-10-24 追加）"
     }
    ]
   },
