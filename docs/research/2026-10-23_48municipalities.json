@@ -38,7 +38,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2330"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "長崎県五島市向町（物件No.781）",
      "price_yen": 2000000,
@@ -56,7 +58,8 @@
      "url": "https://goto.nagasaki-tabinet.com/iju/vacant-house/detail_10220.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2316（2026年秋の新着）"
+     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2316（2026年秋の新着）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県五島市吉田町（物件No.313）",
@@ -75,7 +78,8 @@
      "url": "https://goto.nagasaki-tabinet.com/iju/vacant-house/detail_10006.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2340"
+     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2340",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県五島市吉田町（物件No.641）",
@@ -94,7 +98,8 @@
      "url": "https://goto.nagasaki-tabinet.com/iju/vacant-house/detail_10038.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2329"
+     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2329",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県五島市富江町山下（物件No.653）",
@@ -113,7 +118,8 @@
      "url": "https://goto.nagasaki-tabinet.com/iju/vacant-house/detail_10046.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2328"
+     "source": "五島市空き家バンク（五島の島ぐらし）／DB id 2328",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -134,7 +140,8 @@
    "hazard_url": "https://disaportal.gsi.go.jp/",
    "akiya_bank_url": "https://www.city.hirado.nagasaki.jp/kurashi/life/sumai/akiya/akiyabank/index.html",
    "verdict": "向いている。海が近い200万円以下の売買物件が4件あり、市街地・田平とも暮らしに必要な店が近い。ただ全件汲み取り便所・電気停止中で、昭和の古家ばかり。駐車場があるのは田平No.183だけで、市街の3件は駐車場なし（月極探しが必要）",
-   "properties": [
+   "properties": [],
+   "excluded_20261025": [
     {
      "address": "長崎県平戸市職人町（空き家バンクNo.173）",
      "price_yen": 2000000,
@@ -152,7 +159,8 @@
      "url": "https://www.city.hirado.nagasaki.jp/kurashi/life/sumai/akiya/akiyabank/2024-0410-1316-1.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）"
+     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県平戸市鏡川町516番地（空き家バンクNo.212）",
@@ -171,7 +179,8 @@
      "url": "https://www.city.hirado.nagasaki.jp/kurashi/life/sumai/akiya/akiyabank/2026-0831-1435-125.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）"
+     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県平戸市鏡川町字薄香越638番地7（空き家バンクNo.69）",
@@ -190,7 +199,8 @@
      "url": "https://www.city.hirado.nagasaki.jp/kurashi/life/sumai/akiya/akiyabank/2024-0410-0903-1.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）"
+     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "長崎県平戸市田平町大久保免字釜田107番地（空き家バンクNo.183）",
@@ -209,7 +219,8 @@
      "url": "https://www.city.hirado.nagasaki.jp/kurashi/life/sumai/akiya/akiyabank/2024-1007-1304-125.html",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）"
+     "source": "平戸市空き家バンク（市公式サイト＋物件概要PDF）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -480,7 +491,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "大分県杵築市大内(№581 大内売戸建)",
      "price_yen": 2000000,
@@ -498,7 +511,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-48616/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県杵築市守江(№491 守江売戸建・元店舗)",
@@ -517,7 +531,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-38446/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県杵築市守江(№452 守江売戸建)",
@@ -536,7 +551,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-35855/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県杵築市山香町大字立石(№356 山香町立石売戸建)",
@@ -555,7 +571,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-31221/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -577,6 +594,27 @@
    "verdict": "ワイン(安心院)への近さは最良。200万円以下の家屋付き物件は北部沿岸に4件あり生活利便は良好だが、沿岸は高潮リスク、井戸水・汲み取りの物件が多い点に注意。四日市中心部の200万以下は現状ほぼ土地のみ",
    "properties": [
     {
+     "address": "大分県宇佐市長洲(物件番号01012・元漁師住宅)",
+     "price_yen": 2000000,
+     "land_m2": "123.30",
+     "building_m2": "119.00",
+     "built": "1965年(築61年)",
+     "parking": "なし",
+     "distance_super": "スーパー約1.6km(車4分目安)",
+     "distance_medical": "未確認(総合病院距離の記載なし)",
+     "rebuild": "未確認(近隣商業地域・宅地)",
+     "repair_risk": "全体的に要改修、給湯設備は故障の見込み。平成21年頃から空き家で傷み大",
+     "hazard": "未確認(漁港近く・高潮・津波を要確認)",
+     "community_note": "広めの倉庫あり",
+     "wine_distance": "安心院葡萄酒工房まで車約35分(目安)",
+     "url": "https://www.homes.co.jp/akiyabank/b-8680/",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+    }
+   ],
+   "excluded_20261025": [
+    {
      "address": "大分県宇佐市貴船町(物件番号08037)",
      "price_yen": 2000000,
      "land_m2": "234.33",
@@ -593,7 +631,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-49480/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県宇佐市長洲(物件番号08028)",
@@ -612,7 +651,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-48998/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県宇佐市江須賀(物件番号06038)",
@@ -631,26 +671,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-37890/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
-    },
-    {
-     "address": "大分県宇佐市長洲(物件番号01012・元漁師住宅)",
-     "price_yen": 2000000,
-     "land_m2": "123.30",
-     "building_m2": "119.00",
-     "built": "1965年(築61年)",
-     "parking": "なし",
-     "distance_super": "スーパー約1.6km(車4分目安)",
-     "distance_medical": "未確認(総合病院距離の記載なし)",
-     "rebuild": "未確認(近隣商業地域・宅地)",
-     "repair_risk": "全体的に要改修、給湯設備は故障の見込み。平成21年頃から空き家で傷み大",
-     "hazard": "未確認(漁港近く・高潮・津波を要確認)",
-     "community_note": "広めの倉庫あり",
-     "wine_distance": "安心院葡萄酒工房まで車約35分(目安)",
-     "url": "https://www.homes.co.jp/akiyabank/b-8680/",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -673,25 +695,6 @@
    "verdict": "盆地で夏暑く冬冷えるが、福岡都市圏に近く交流支援も組織的。200万円以下は郊外寄りが中心で、条件(スーパー20分・病院30分)を満たすのは2件。市中心部は水害履歴があるので物件ごとのハザードPDF確認が必須",
    "properties": [
     {
-     "address": "大分県日田市大字小山(内河町)(No.466)",
-     "price_yen": 1900000,
-     "land_m2": "165.32",
-     "building_m2": "108.12",
-     "built": "昭和55年5月(築46年)",
-     "parking": "あり1台",
-     "distance_super": "スーパー(ザ・ビッグ日田店)約2.9km・車6分",
-     "distance_medical": "石井町クリニック約1.1km・車2分。日田駅まで車9分",
-     "rebuild": "未確認",
-     "repair_risk": "床板張替え・畳表替・壁紙張替えなど要補修多数(DIY向き)。下水なし・汲み取り和式。残置物撤去済み",
-     "hazard": "市作成の災害ハザードマップ(内河町)あり。個別の区域該当は未確認",
-     "community_note": "石井小学校徒歩6分。令和8年5月登録",
-     "wine_distance": "巨峰ワイナリーまで車約40分(目安)",
-     "url": "https://www.city.hita.oita.jp/uploaded/attachment/11158.pdf",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "日田市空き家バンク(市公式・物件詳細PDF)"
-    },
-    {
      "address": "大分県日田市大字二串(二串町)(No.454)",
      "price_yen": 800000,
      "land_m2": "566.13",
@@ -709,6 +712,28 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "日田市空き家バンク(市公式・物件詳細PDF)"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "大分県日田市大字小山(内河町)(No.466)",
+     "price_yen": 1900000,
+     "land_m2": "165.32",
+     "building_m2": "108.12",
+     "built": "昭和55年5月(築46年)",
+     "parking": "あり1台",
+     "distance_super": "スーパー(ザ・ビッグ日田店)約2.9km・車6分",
+     "distance_medical": "石井町クリニック約1.1km・車2分。日田駅まで車9分",
+     "rebuild": "未確認",
+     "repair_risk": "床板張替え・畳表替・壁紙張替えなど要補修多数(DIY向き)。下水なし・汲み取り和式。残置物撤去済み",
+     "hazard": "市作成の災害ハザードマップ(内河町)あり。個別の区域該当は未確認",
+     "community_note": "石井小学校徒歩6分。令和8年5月登録",
+     "wine_distance": "巨峰ワイナリーまで車約40分(目安)",
+     "url": "https://www.city.hita.oita.jp/uploaded/attachment/11158.pdf",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "日田市空き家バンク(市公式・物件詳細PDF)",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -767,7 +792,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "大分県佐伯市大字海崎(空き家バンク472番)",
      "price_yen": 1000000,
@@ -785,7 +812,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-49898/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "大分県佐伯市大字木立(空き家バンク468番)",
@@ -804,7 +832,8 @@
      "url": "https://www.homes.co.jp/akiyabank/b-49486/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -840,25 +869,6 @@
      "community_note": "広縁と囲炉裏のある和風建物。福良ヶ丘小800m",
      "wine_distance": "久住ワイナリーまで車約1時間10分(目安)",
      "url": "https://www.homes.co.jp/akiyabank/b-34335/",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
-    },
-    {
-     "address": "大分県臼杵市大字福良(東福良)(登録No.355)",
-     "price_yen": 1500000,
-     "land_m2": "198.34",
-     "building_m2": "未確認",
-     "built": "1957年(築69年)",
-     "parking": "なし(近隣で借りる想定)",
-     "distance_super": "スーパー約1.1km(車3分目安)、商店街600m",
-     "distance_medical": "コスモス病院約2.8km(車6分目安)",
-     "rebuild": "未確認",
-     "repair_risk": "大規模補修必要(玄関扉の歪み、ベランダ扉開閉不可等)。上下水道・洋式水洗・CATV引込済",
-     "hazard": "未確認",
-     "community_note": "二王座歴史の道に近い閑静な住宅地",
-     "wine_distance": "久住ワイナリーまで車約1時間10分(目安)",
-     "url": "https://www.homes.co.jp/akiyabank/b-24946/",
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
@@ -920,6 +930,28 @@
      "checked": "2026-10-23",
      "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)"
     }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "大分県臼杵市大字福良(東福良)(登録No.355)",
+     "price_yen": 1500000,
+     "land_m2": "198.34",
+     "building_m2": "未確認",
+     "built": "1957年(築69年)",
+     "parking": "なし(近隣で借りる想定)",
+     "distance_super": "スーパー約1.1km(車3分目安)、商店街600m",
+     "distance_medical": "コスモス病院約2.8km(車6分目安)",
+     "rebuild": "未確認",
+     "repair_risk": "大規模補修必要(玄関扉の歪み、ベランダ扉開閉不可等)。上下水道・洋式水洗・CATV引込済",
+     "hazard": "未確認",
+     "community_note": "二王座歴史の道に近い閑静な住宅地",
+     "wine_distance": "久住ワイナリーまで車約1時間10分(目安)",
+     "url": "https://www.homes.co.jp/akiyabank/b-24946/",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "LIFULL HOME'S 空き家バンク(自治体管理物件)",
+     "excluded_reason": "大幅修繕"
+    }
    ]
   },
   {
@@ -940,25 +972,6 @@
    "akiya_bank_url": "https://ijurikkoku.com/teijyusupport/buying/",
    "verdict": "移住者受け入れ・交流の仕組みが4市で最も充実しており、交流重視なら第一候補。ただし200万円以下の物件は農地付きが大半で、条件に合う（農地なし）のは4件。志賀郷は人気地区だが市街地まで車20分ほど。全国版空き家バンク（akiya-athome）は本日メンテナンス中で、手元データの安国寺町180万円物件は確認できず",
    "properties": [
-    {
-     "address": "京都府綾部市志賀郷町",
-     "price_yen": 1500000,
-     "land_m2": "218.71㎡（別に原野198㎡・雑種地171㎡付き。農地なし）",
-     "building_m2": "92.55㎡（木造瓦葺2階建）",
-     "built": "未確認（2024年9月頃まで入居）",
-     "parking": "未確認",
-     "distance_super": "未確認（綾部駅・市役所まで約12km＝車で約20分の目安）",
-     "distance_medical": "未確認（綾部市立病院のある市街地まで車約20分の目安）",
-     "rebuild": "未確認（都市計画区域内・田園居住地区）",
-     "repair_risk": "修繕必要（買主負担）。トイレ汲み取り、上水道・プロパン",
-     "hazard": "物件ページに警戒区域の記載なし（要ハザードマップ確認）",
-     "community_note": "重点地区。移住者に人気の志賀郷、志賀小学校0.5km、バス停0.2km。自治会加入必要",
-     "wine_distance": "丹波ワインまで車約50分の目安",
-     "url": "https://ijurikkoku.com/akiya_sell/t-643/",
-     "source": "移住立国あやべ（綾部市空き家バンク）T-643",
-     "status": "掲載中",
-     "checked": "2026-10-23"
-    },
     {
      "address": "京都府綾部市物部町",
      "price_yen": 1000000,
@@ -1035,6 +1048,28 @@
      "checked": "2026-10-24",
      "source": "LIFULL HOME'S 空き家バンク（綾部市の空き家バンク物件・2026-10-24 追加）"
     }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "京都府綾部市志賀郷町",
+     "price_yen": 1500000,
+     "land_m2": "218.71㎡（別に原野198㎡・雑種地171㎡付き。農地なし）",
+     "building_m2": "92.55㎡（木造瓦葺2階建）",
+     "built": "未確認（2024年9月頃まで入居）",
+     "parking": "未確認",
+     "distance_super": "未確認（綾部駅・市役所まで約12km＝車で約20分の目安）",
+     "distance_medical": "未確認（綾部市立病院のある市街地まで車約20分の目安）",
+     "rebuild": "未確認（都市計画区域内・田園居住地区）",
+     "repair_risk": "修繕必要（買主負担）。トイレ汲み取り、上水道・プロパン",
+     "hazard": "物件ページに警戒区域の記載なし（要ハザードマップ確認）",
+     "community_note": "重点地区。移住者に人気の志賀郷、志賀小学校0.5km、バス停0.2km。自治会加入必要",
+     "wine_distance": "丹波ワインまで車約50分の目安",
+     "url": "https://ijurikkoku.com/akiya_sell/t-643/",
+     "source": "移住立国あやべ（綾部市空き家バンク）T-643",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "excluded_reason": "汲み取り"
+    }
    ]
   },
   {
@@ -1054,7 +1089,8 @@
    "hazard_url": "https://www.city.takashima.lg.jp/material/files/group/11/20220428-3.pdf",
    "akiya_bank_url": "https://move-takashima.jp/house/sumai_syurui/500%e4%b8%87%e5%86%86%e6%9c%aa%e6%ba%80",
    "verdict": "窓口・コンシェルジュの体制は整っているが、重点地区の安曇川・新旭で200万円以下の売買物件は本日時点で0件（安曇川田中350万・新旭饗庭480万など）。200万円の2件は北部マキノと高島町で、どちらも小さく汲み取りトイレ。予算を少し上げられるなら重点地区の物件が出てくる。高島町拝戸200万円物件は地目が田のため除外",
-   "properties": [
+   "properties": [],
+   "excluded_20261025": [
     {
      "address": "滋賀県高島市マキノ町海津",
      "price_yen": 2000000,
@@ -1072,7 +1108,8 @@
      "url": "https://move-takashima.jp/house/13337",
      "source": "高島で暮らそう（高島市空き家紹介システム）No.325",
      "status": "掲載中",
-     "checked": "2026-10-23"
+     "checked": "2026-10-23",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "滋賀県高島市永田",
@@ -1091,7 +1128,8 @@
      "url": "https://move-takashima.jp/house/11811",
      "source": "高島で暮らそう No.295",
      "status": "掲載中",
-     "checked": "2026-10-23"
+     "checked": "2026-10-23",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -1110,7 +1148,7 @@
    "hazard": "園部川沿いで市街地の浸水被害があり河川改修中（京都府）。八木町は大堰川（桂川）沿い・室橋地区などに土砂災害警戒区域",
    "hazard_url": "https://www.pref.kyoto.jp/nantan/do-kikaku/kasen_sonobegawa.html",
    "akiya_bank_url": "https://www.nancla.jp/houses/",
-   "verdict": "大阪・京都への近さは4市で一番。ただし本日、市の空き家バンク（nancla）に接続できず（サイト側が応答しない）、全国版空き家バンクもメンテナンス中で、物件を1件も確認できなかった。手元データには八木町八木190万円（No.549）があるが未確認のため掲載せず。後日サイト復旧後に再確認が必要",
+   "verdict": "10月25日に市のサイト（nancla）が復旧したので確認した。200万円以下は八木町八木の190万円（トイレ汲み取り・修繕必要）と日吉町殿田の180万円（店舗の建物）だけで、どちらも条件外。200〜300万円の3件（八木町鹿草・日吉町佐々江・日吉町田原）もすべて汲み取り式。大阪・京都への近さは4市で一番だが、今は条件に合う家が無い。",
    "properties": []
   },
   {
@@ -1150,6 +1188,27 @@
      "checked": "2026-10-23"
     },
     {
+     "address": "京都府京丹後市峰山町杉谷",
+     "price_yen": 1000000,
+     "land_m2": "69.23㎡（参考値・借地）",
+     "building_m2": "115.84㎡（7K）",
+     "built": "未確認",
+     "parking": "なし",
+     "distance_super": "未確認",
+     "distance_medical": "丹後中央病院（峰山町）まで車数分の目安",
+     "rebuild": "未確認",
+     "repair_risk": "多少補修必要。上下水道あり・水洗トイレ。土地は借地（年1回の地代が必要、現契約を承継）",
+     "hazard": "物件ページに警戒区域の記載なし",
+     "community_note": "重点地区・峰山中心部（市役所の近く）。借地のため土地は自分のものにならない点に注意",
+     "wine_distance": "天橋立ワインまで車約30分の目安",
+     "url": "https://kyotango-akiya.jp/akiya/15923/",
+     "source": "京丹後市空き家情報バンク",
+     "status": "掲載中",
+     "checked": "2026-10-23"
+    }
+   ],
+   "excluded_20261025": [
+    {
      "address": "京都府京丹後市網野町網野2710-9",
      "price_yen": 1800000,
      "land_m2": "109.74㎡",
@@ -1166,7 +1225,8 @@
      "url": "https://kyotango-akiya.jp/akiya/1116/",
      "source": "京丹後市空き家情報バンク",
      "status": "掲載中",
-     "checked": "2026-10-23"
+     "checked": "2026-10-23",
+     "excluded_reason": "大幅修繕"
     },
     {
      "address": "京都府京丹後市網野町三津",
@@ -1185,7 +1245,8 @@
      "url": "https://kyotango-akiya.jp/akiya/14573/",
      "source": "京丹後市空き家情報バンク",
      "status": "掲載中",
-     "checked": "2026-10-23"
+     "checked": "2026-10-23",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "京都府京丹後市峰山町四軒12",
@@ -1204,26 +1265,8 @@
      "url": "https://kyotango-akiya.jp/akiya/1277/",
      "source": "京丹後市空き家情報バンク",
      "status": "掲載中",
-     "checked": "2026-10-23"
-    },
-    {
-     "address": "京都府京丹後市峰山町杉谷",
-     "price_yen": 1000000,
-     "land_m2": "69.23㎡（参考値・借地）",
-     "building_m2": "115.84㎡（7K）",
-     "built": "未確認",
-     "parking": "なし",
-     "distance_super": "未確認",
-     "distance_medical": "丹後中央病院（峰山町）まで車数分の目安",
-     "rebuild": "未確認",
-     "repair_risk": "多少補修必要。上下水道あり・水洗トイレ。土地は借地（年1回の地代が必要、現契約を承継）",
-     "hazard": "物件ページに警戒区域の記載なし",
-     "community_note": "重点地区・峰山中心部（市役所の近く）。借地のため土地は自分のものにならない点に注意",
-     "wine_distance": "天橋立ワインまで車約30分の目安",
-     "url": "https://kyotango-akiya.jp/akiya/15923/",
-     "source": "京丹後市空き家情報バンク",
-     "status": "掲載中",
-     "checked": "2026-10-23"
+     "checked": "2026-10-23",
+     "excluded_reason": "大幅修繕"
     }
    ]
   },
@@ -1382,25 +1425,6 @@
    "properties": [
     {
      "address": "和歌山県田辺市上屋敷一丁目",
-     "price_yen": 2000000,
-     "land_m2": "59.79",
-     "building_m2": "89.48",
-     "built": "1967年(築59年)",
-     "parking": "なし",
-     "distance_super": "約1.0km（物件資料）",
-     "distance_medical": "総合病院 約0.5km（物件資料）",
-     "rebuild": "未確認",
-     "repair_risk": "木造2階建・4K（1階に店舗スペース）。汲み取りトイレ、下水道は記載なし",
-     "hazard": "津波浸水地域（物件資料）",
-     "community_note": "たなべ営業室・市街地のイベントに参加しやすい",
-     "wine_distance": "紀南観光ブドウ園 車約10分／湯浅ワイナリー 車約45分（目安）",
-     "url": "https://www.wakayamagurashi.jp/house/search/1946",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "田辺市空き家バンク（わかやま空き家バンク）A-1625"
-    },
-    {
-     "address": "和歌山県田辺市上屋敷一丁目",
      "price_yen": 1800000,
      "land_m2": "96.13",
      "building_m2": "未確認",
@@ -1436,6 +1460,28 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "家いちば P202400175"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "和歌山県田辺市上屋敷一丁目",
+     "price_yen": 2000000,
+     "land_m2": "59.79",
+     "building_m2": "89.48",
+     "built": "1967年(築59年)",
+     "parking": "なし",
+     "distance_super": "約1.0km（物件資料）",
+     "distance_medical": "総合病院 約0.5km（物件資料）",
+     "rebuild": "未確認",
+     "repair_risk": "木造2階建・4K（1階に店舗スペース）。汲み取りトイレ、下水道は記載なし",
+     "hazard": "津波浸水地域（物件資料）",
+     "community_note": "たなべ営業室・市街地のイベントに参加しやすい",
+     "wine_distance": "紀南観光ブドウ園 車約10分／湯浅ワイナリー 車約45分（目安）",
+     "url": "https://www.wakayamagurashi.jp/house/search/1946",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "田辺市空き家バンク（わかやま空き家バンク）A-1625",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -1512,7 +1558,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "岡山県津山市一方1185-1",
      "price_yen": 1500000,
@@ -1530,7 +1578,8 @@
      "url": "https://www.ok-smile.jp/property/detail?p_no=000002358348",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
+     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "岡山県津山市小田中",
@@ -1549,7 +1598,8 @@
      "url": "https://www.ok-smile.jp/property/detail?p_no=000001080900",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
+     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）",
+     "excluded_reason": "汲み取り"
     },
     {
      "address": "岡山県津山市横山500-1",
@@ -1568,7 +1618,8 @@
      "url": "https://www.ok-smile.jp/property/detail?p_no=000002527444",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
+     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -1739,7 +1790,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "ニフティ不動産（SUUMO/アットホーム等の掲載を集約）"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "香川県三豊市高瀬町比地",
      "price_yen": 1500000,
@@ -1757,7 +1810,8 @@
      "url": "https://myhome.nifty.com/chuko-ikkodate/kagawa/mitoyoshi_ct/detail_e2ea9164995b38638dda69b7ed0d1da4/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "ニフティ不動産（SUUMO/アットホーム等の掲載を集約）"
+     "source": "ニフティ不動産（SUUMO/アットホーム等の掲載を集約）",
+     "excluded_reason": "大幅修繕"
     },
     {
      "address": "香川県三豊市高瀬町新名",
@@ -1776,7 +1830,8 @@
      "url": "https://myhome.nifty.com/chuko-ikkodate/kagawa/mitoyoshi_ct/detail_d92d4ff33e323554a8547a435e8d46fc/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "ニフティ不動産（SUUMO/アットホーム等の掲載を集約）"
+     "source": "ニフティ不動産（SUUMO/アットホーム等の掲載を集約）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -1796,25 +1851,6 @@
    "akiya_bank_url": "https://www.ok-smile.jp/vacant-house",
    "verdict": "○ 久世・勝山の町なかに100〜200万円の家あり。駐車場付きは台金屋の1件。ワイナリーが市内にある点はこの人に合う",
    "properties": [
-    {
-     "address": "岡山県真庭市台金屋395",
-     "price_yen": 1000000,
-     "land_m2": "285.54",
-     "building_m2": "60.97",
-     "built": "昭和45年10月(築56年)",
-     "parking": "あり1台",
-     "distance_super": "未確認",
-     "distance_medical": "未確認",
-     "rebuild": "可能性高い（南6m道路を含む二方道路）",
-     "repair_risk": "平屋。汲取式。内装・水回りのリフォーム必要",
-     "hazard": "久世駅1.9km。旭川沿いの浸水想定は要確認",
-     "community_note": "",
-     "wine_distance": "ひるぜんワイナリーまで車約40分",
-     "url": "https://www.ok-smile.jp/property/detail?p_no=000002557966",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
-    },
     {
      "address": "岡山県真庭市久世248-6",
      "price_yen": 1500000,
@@ -1852,6 +1888,28 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "岡山県真庭市台金屋395",
+     "price_yen": 1000000,
+     "land_m2": "285.54",
+     "building_m2": "60.97",
+     "built": "昭和45年10月(築56年)",
+     "parking": "あり1台",
+     "distance_super": "未確認",
+     "distance_medical": "未確認",
+     "rebuild": "可能性高い（南6m道路を含む二方道路）",
+     "repair_risk": "平屋。汲取式。内装・水回りのリフォーム必要",
+     "hazard": "久世駅1.9km。旭川沿いの浸水想定は要確認",
+     "community_note": "",
+     "wine_distance": "ひるぜんワイナリーまで車約40分",
+     "url": "https://www.ok-smile.jp/property/detail?p_no=000002557966",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "住まいる岡山（岡山県空き家情報流通システム掲載サイト）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -1931,25 +1989,6 @@
    "verdict": "△〜○ 駐車場付き・200万円以下の家はあるが築古が中心。土砂災害区域の確認が必須。ワインとの距離は遠い",
    "properties": [
     {
-     "address": "広島県江田島市能美町鹿川",
-     "price_yen": 1900000,
-     "land_m2": "570.59",
-     "building_m2": "217.39",
-     "built": "昭和11年4月(築90年・昭和47年増築未登記)",
-     "parking": "あり6台",
-     "distance_super": "スーパー藤三 徒歩3分(物件説明)",
-     "distance_medical": "未確認",
-     "rebuild": "可能性高い（角地・西4.5m/南5m公道）",
-     "repair_risk": "下水道完備。築90年で大規模修繕前提。溜池・山林も一体で売買",
-     "hazard": "能美町。土砂災害・高潮の確認要",
-     "community_note": "中町港(広島宇品への高速船)が近い",
-     "wine_distance": "広島三次ワイナリーまで車約2時間",
-     "url": "https://www.homes.co.jp/kodate/b-32126690000114/",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "LIFULL HOME'S"
-    },
-    {
      "address": "広島県江田島市大柿町大君",
      "price_yen": 1500000,
      "land_m2": "353.33",
@@ -1967,6 +2006,28 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "LIFULL HOME'S"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "広島県江田島市能美町鹿川",
+     "price_yen": 1900000,
+     "land_m2": "570.59",
+     "building_m2": "217.39",
+     "built": "昭和11年4月(築90年・昭和47年増築未登記)",
+     "parking": "あり6台",
+     "distance_super": "スーパー藤三 徒歩3分(物件説明)",
+     "distance_medical": "未確認",
+     "rebuild": "可能性高い（角地・西4.5m/南5m公道）",
+     "repair_risk": "下水道完備。築90年で大規模修繕前提。溜池・山林も一体で売買",
+     "hazard": "能美町。土砂災害・高潮の確認要",
+     "community_note": "中町港(広島宇品への高速船)が近い",
+     "wine_distance": "広島三次ワイナリーまで車約2時間",
+     "url": "https://www.homes.co.jp/kodate/b-32126690000114/",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "LIFULL HOME'S",
+     "excluded_reason": "大幅修繕"
     }
    ]
   },
@@ -2100,7 +2161,9 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "西条市空き家バンク(No.320)"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "address": "愛媛県西条市安用",
      "price_yen": 2000000,
@@ -2118,7 +2181,8 @@
      "url": "https://www.city.saijo.ehime.jp/uploaded/attachment/84892.pdf",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "西条市空き家バンク(No.160)"
+     "source": "西条市空き家バンク(No.160)",
+     "excluded_reason": "大幅修繕"
     }
    ]
   },
@@ -2159,7 +2223,9 @@
      "wine_distance": "和・祢津のワイナリーまで車15〜20分（目安）。立ち寄り温泉の明神館まで車4分",
      "url": "https://rakuen-akiya.jp/bukken/457043/",
      "source": "楽園信州空き家バンク（保科不動産・一般媒介）"
-    },
+    }
+   ],
+   "excluded_20261025": [
     {
      "status": "掲載中",
      "checked": "2026-10-23",
@@ -2177,7 +2243,8 @@
      "community_note": "定住も可と記載。空き家相談窓口とうみが担当",
      "wine_distance": "和・祢津のワイナリーまで車15〜20分（目安）",
      "url": "https://rakuen-akiya.jp/bukken/457777/",
-     "source": "楽園信州空き家バンク（東御市）"
+     "source": "楽園信州空き家バンク（東御市）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -2221,25 +2288,6 @@
     {
      "status": "掲載中",
      "checked": "2026-10-23",
-     "address": "長野県上田市生田2083-1ほか（丸子地域）",
-     "price_yen": 1500000,
-     "land_m2": "362.96",
-     "building_m2": "103.74",
-     "built": "1966年(築60年)",
-     "parking": "あり3台",
-     "distance_super": "車10分前後（丸子市街、目安・未確認）",
-     "distance_medical": "丸子中央病院まで車10〜15分（目安）",
-     "rebuild": "未確認",
-     "repair_risk": "5DK・築60年・空き家7年以上。トイレは簡易水洗の汲み取り、風呂は灯油。下水道は前の道まで来ているが接続工事が必要（負担金は納付済み）。売主が室内の残置物を撤去",
-     "hazard": "土砂災害警戒区域内、地すべり防止区域内",
-     "community_note": "丸子北小・中まで約2.3km。丸子のデマンド交通のバス停まで80m",
-     "wine_distance": "椀子ワイナリー（丸子）まで車10〜15分（目安）",
-     "url": "https://rakuen-akiya.jp/bukken/413379/",
-     "source": "楽園信州空き家バンク（信州うえだ空き家バンク）"
-    },
-    {
-     "status": "掲載中",
-     "checked": "2026-10-23",
      "address": "長野県上田市小泉1775-1（川西地区）",
      "price_yen": 1500000,
      "land_m2": "135.53",
@@ -2274,6 +2322,28 @@
      "wine_distance": "椀子ワイナリーまで車20〜25分（目安）",
      "url": "https://jmty.jp/nagano/est-buy/article-1s8khm",
      "source": "ジモティー（AlbaLink高崎・売主）"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "address": "長野県上田市生田2083-1ほか（丸子地域）",
+     "price_yen": 1500000,
+     "land_m2": "362.96",
+     "building_m2": "103.74",
+     "built": "1966年(築60年)",
+     "parking": "あり3台",
+     "distance_super": "車10分前後（丸子市街、目安・未確認）",
+     "distance_medical": "丸子中央病院まで車10〜15分（目安）",
+     "rebuild": "未確認",
+     "repair_risk": "5DK・築60年・空き家7年以上。トイレは簡易水洗の汲み取り、風呂は灯油。下水道は前の道まで来ているが接続工事が必要（負担金は納付済み）。売主が室内の残置物を撤去",
+     "hazard": "土砂災害警戒区域内、地すべり防止区域内",
+     "community_note": "丸子北小・中まで約2.3km。丸子のデマンド交通のバス停まで80m",
+     "wine_distance": "椀子ワイナリー（丸子）まで車10〜15分（目安）",
+     "url": "https://rakuen-akiya.jp/bukken/413379/",
+     "source": "楽園信州空き家バンク（信州うえだ空き家バンク）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -2314,7 +2384,8 @@
    "hazard_url": "https://www.chikuma-iju.jp/water-hazard-flood-map",
    "akiya_bank_url": "https://www.chikuma-iju.jp/akiya",
    "verdict": "200万円以下は2件。①倉科1653-2（198万円・下水道あり）は「近くの農地1,955㎡も一緒に売りたい」と書かれているため条件外（https://rakuen-akiya.jp/bukken/417192/）。②屋代駅に近い打沢の0円物件は生活の便利さが良いが、敷地が道路に面していないため建て替えができない可能性が高い。条件内で強く勧められる物件は無い",
-   "properties": [
+   "properties": [],
+   "excluded_20261025": [
     {
      "status": "掲載中",
      "checked": "2026-10-23",
@@ -2332,7 +2403,8 @@
      "community_note": "屋代小まで1.5km、こども園まで1.1km。第一種住居地域",
      "wine_distance": "坂城葡萄酒醸造まで車15〜20分（目安）",
      "url": "https://jmty.jp/nagano/est-buy/article-1skfaq",
-     "source": "ジモティー（アキソル・0円物件マッチング）"
+     "source": "ジモティー（アキソル・0円物件マッチング）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -2469,25 +2541,6 @@
      "source": "楽園信州空き家バンク（塩尻市空き家バンク）/手元DB"
     },
     {
-     "address": "長野県塩尻市大字木曽平沢（旭町地区）",
-     "price_yen": 820000,
-     "land_m2": "160.87",
-     "building_m2": "191.33",
-     "built": "昭和39年(築62年)",
-     "parking": "あり（鉄骨造車庫、普通車1台／軽なら2台）",
-     "distance_super": "未確認",
-     "distance_medical": "未確認",
-     "rebuild": "未確認",
-     "repair_risk": "空き家歴約10年。トイレ・風呂・キッチン等の水回りは大幅改修が必要、内装も古い。木造（一部鉄骨）2階建7K。公共下水道。DIY前提の要リフォーム物件。",
-     "hazard": "未確認（奈良井川沿いの谷あいの高台。土砂災害区域該当の有無は要確認）",
-     "community_note": "窓口は塩尻市（しおじり街元気カンパニー）。漆器の町・木曽平沢、楢川小中学校1.4km。地域振興バス停140m。",
-     "wine_distance": "桔梗ヶ原まで車30分前後（目安）。塩尻IC車33分",
-     "url": "https://rakuen-akiya.jp/bukken/447781/",
-     "status": "掲載中",
-     "checked": "2026-10-23",
-     "source": "楽園信州空き家バンク（塩尻市空き家バンク）/手元DB"
-    },
-    {
      "address": "長野県塩尻市旧塩尻（大字）塩嶺高原別荘地内",
      "price_yen": 300000,
      "land_m2": "526",
@@ -2505,6 +2558,28 @@
      "status": "掲載中",
      "checked": "2026-10-23",
      "source": "ジモティー/手元DB"
+    }
+   ],
+   "excluded_20261025": [
+    {
+     "address": "長野県塩尻市大字木曽平沢（旭町地区）",
+     "price_yen": 820000,
+     "land_m2": "160.87",
+     "building_m2": "191.33",
+     "built": "昭和39年(築62年)",
+     "parking": "あり（鉄骨造車庫、普通車1台／軽なら2台）",
+     "distance_super": "未確認",
+     "distance_medical": "未確認",
+     "rebuild": "未確認",
+     "repair_risk": "空き家歴約10年。トイレ・風呂・キッチン等の水回りは大幅改修が必要、内装も古い。木造（一部鉄骨）2階建7K。公共下水道。DIY前提の要リフォーム物件。",
+     "hazard": "未確認（奈良井川沿いの谷あいの高台。土砂災害区域該当の有無は要確認）",
+     "community_note": "窓口は塩尻市（しおじり街元気カンパニー）。漆器の町・木曽平沢、楢川小中学校1.4km。地域振興バス停140m。",
+     "wine_distance": "桔梗ヶ原まで車30分前後（目安）。塩尻IC車33分",
+     "url": "https://rakuen-akiya.jp/bukken/447781/",
+     "status": "掲載中",
+     "checked": "2026-10-23",
+     "source": "楽園信州空き家バンク（塩尻市空き家バンク）/手元DB",
+     "excluded_reason": "大幅修繕"
     }
    ]
   },
@@ -2562,7 +2637,8 @@
    "hazard_url": "https://www.town.matsukawa.lg.jp/kurashi_tetsuzuki/anzen_anshin/bosaijoho/2211.html",
    "akiya_bank_url": "https://rakuen-akiya.jp/housesearch/area/?vender_jiscode[]=20402",
    "verdict": "果樹とワイン（シードル）の町で、病院が近く体験ツアーも活発。200万円以下は元大島の1件のみで、汲み取りトイレ・築65年・大規模修繕必要・浸水想定区域と注意点が多い。下水引込可能なので改修込みの総額で判断。上片桐は350万円の物件があり、予算を少し上げれば選択肢が増える。",
-   "properties": [
+   "properties": [],
+   "excluded_20261025": [
     {
      "address": "長野県下伊那郡松川町元大島2627-13",
      "price_yen": 2000000,
@@ -2580,7 +2656,8 @@
      "url": "https://rakuen-akiya.jp/bukken/454563/",
      "status": "掲載中",
      "checked": "2026-10-23",
-     "source": "楽園信州空き家バンク（ジモティー https://jmty.jp/nagano/est-buy/article-1rmaym にも同物件）"
+     "source": "楽園信州空き家バンク（ジモティー https://jmty.jp/nagano/est-buy/article-1rmaym にも同物件）",
+     "excluded_reason": "汲み取り"
     }
    ]
   },
@@ -2658,7 +2735,8 @@
    "hazard_url": "https://www.city.yamanashi.yamanashi.jp/soshiki/7/1434.html",
    "akiya_bank_url": "https://www.city.yamanashi.yamanashi.jp/site/iju/1929.html",
    "verdict": "空き家バンク売却物件の大半は350万〜1,400万円。200万円以下は三富の古民家1件のみで、山あい・大規模修繕・駐車制限ありと条件は厳しい。牧丘の候補は農地付きで除外",
-   "properties": [
+   "properties": [],
+   "excluded_20261025": [
     {
      "address": "山梨県山梨市三富川浦（詳細地番は見学時に開示）",
      "price_yen": 1800000,
@@ -2676,7 +2754,8 @@
      "url": "https://www.city.yamanashi.yamanashi.jp/uploaded/attachment/9235.pdf",
      "status": "掲載中（一覧で見学受付〇）",
      "checked": "2026-10-23",
-     "source": "山梨市空き家バンク 登録No.283（一覧 https://www.city.yamanashi.yamanashi.jp/site/iju/1929.html ）"
+     "source": "山梨市空き家バンク 登録No.283（一覧 https://www.city.yamanashi.yamanashi.jp/site/iju/1929.html ）",
+     "excluded_reason": "大幅修繕"
     }
    ]
   },
@@ -3079,5 +3158,6 @@
    "verdict": "条件に合う物件は0件。空き家バンクの200万円以下は畔地(No.28・180万円)のみだが、畑付き・農地転用が必要で対象外。民間サイトでも200万円以下は見つからず。全域特別豪雪地帯で冬の負担が最も大きい",
    "properties": []
   }
- ]
+ ],
+ "rule_20261025": "汲み取り式トイレ・大幅な修繕が必要と明記の物件を除外 (excluded_20261025 に退避)"
 }
