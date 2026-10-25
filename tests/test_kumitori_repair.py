@@ -120,3 +120,19 @@ def test_nancla_detail_extracts_toilet():
             "<p>田畑つき</p></main>")
     out = parse_detail(html)
     assert "汲み取り" in out and "田畑つき" not in out
+
+
+def test_touch_seen_refreshes_body():
+    from src import sold
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.executescript(db.SCHEMA)
+    db._run_migrations(c)
+    c.execute("INSERT INTO properties (source, listing_id, url, title, price, body,"
+              " first_seen_at, last_seen_at, status) VALUES ('nancla', '549', 'u', '旧', 1900000,"
+              " '一覧の短い説明', '2026-01-01', '2026-01-01', 'active')")
+    sold.touch_seen(c, "nancla", "549", title="新", body="トイレ：汲み取り")
+    r = c.execute("SELECT title, body, last_seen_at FROM properties").fetchone()
+    assert r["body"] == "トイレ：汲み取り" and r["title"] == "新"
+    assert r["last_seen_at"] > "2026-01-01"
+    assert purge.count_targets(c)["kumitori"] == 1

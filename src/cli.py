@@ -83,7 +83,9 @@ def scrape(source: str | None, group: str) -> None:
                         stats["skipped"] += 1
                         # ただし既に DB にある物件なら「今日も掲載中」の印だけ付ける
                         # (印が無いと sold 扱いになってしまう)
-                        sold_rules.touch_seen(conn, listing.source, listing.listing_id)
+                        # 本文も最新にして、次の purge で文章の除外ルールが効くようにする
+                        sold_rules.touch_seen(conn, listing.source, listing.listing_id,
+                                              title=listing.title, body=listing.body)
                         continue
                     _pid, is_new = db.upsert_listing(conn, listing)
                     if is_new:

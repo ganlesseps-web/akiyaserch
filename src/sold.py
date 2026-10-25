@@ -32,12 +32,22 @@ logger = logging.getLogger(__name__)
 MISSING_DAYS = 3
 
 
-def touch_seen(conn: Any, source: str, listing_id: str) -> None:
+def touch_seen(conn: Any, source: str, listing_id: str, *,
+               title: str | None = None, body: str | None = None) -> None:
     """DB に入れない (スキップした) 物件でも「今日見かけた」印を付ける。
 
     価格が300万以上に上がった/土地判定になった物件が既に DB にある場合、
     掲載は続いているのに last_seen_at が止まって sold 扱いになるのを防ぐ。
+    body を渡すと本文も最新に置き換える (2026-10-25): 詳細ページを読むようになって
+    「汲み取り」等が分かった物件を、次の purge が古い本文のせいで見逃さないように。
     """
+    if body:
+        conn.execute(
+            "UPDATE properties SET last_seen_at = ?, title = COALESCE(?, title), body = ?"
+            " WHERE source = ? AND listing_id = ?",
+            (db.now_iso(), title, body, source, listing_id),
+        )
+        return
     conn.execute(
         "UPDATE properties SET last_seen_at = ? WHERE source = ? AND listing_id = ?",
         (db.now_iso(), source, listing_id),
