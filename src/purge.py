@@ -8,6 +8,9 @@ scrape 側のスキップと purge 側の削除で**同じ条件**を使うこ�
 - 300万円以上の物件 … 予算外。※価格不明(NULL)は「300万以上と確定していない」ので残す
   ※例外: 値引き交渉の対象地域 (negotiation.py) の 300万〜400万円未満は残す (2026-10-23)
 
+- 農地とセット販売の物件 (2026-10-18) / 汲み取り式トイレ・大幅な修繕が必要と明記 (2026-10-25)
+  … 本文の文章で判定するので SQL ではなく Python で走査する (text_rule_ids)
+
 守るもの:
 - ★お気に入り / 星評価 を付けた物件は、条件に当てはまっても削除しない
   (自分で意思表示したものが勝手に消えないように)
@@ -91,23 +94,37 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
     farm, _why = is_farmland_bundled(listing.title, listing.body)
     if farm:
         return "農地付き"
+    return text_rule_reason(listing.title, listing.body, skip_farmland=True)
+
+
+def text_rule_reason(title: str | None, body: str | None, *,
+                     skip_farmland: bool = False) -> str | None:
+    """本文の文章で決める除外理由 (農地付き / 汲み取り / 大幅修繕)。"""
+    from .normalize import is_farmland_bundled, is_kumitori, needs_major_repair
+    if not skip_farmland and is_farmland_bundled(title, body)[0]:
+        return "農地付き"
+    # 2026-10-25 ユーザー指示: 汲み取り式トイレ・確実に大幅修繕が必要な物件は要らない
+    if is_kumitori(title, body)[0]:
+        return "汲み取り"
+    if needs_major_repair(title, body)[0]:
+        return "大幅修繕"
     return None
 
 
-def farmland_ids(conn: Any, *, keep_rated: bool = True) -> list[int]:
-    """既にDBにある「農地付き」物件の id (お気に入り/星評価は守る)。
-
-    判定は本文の文章で行うため SQL ではなく Python で走査する。
-    """
-    from .normalize import is_farmland_bundled
+def text_rule_ids(conn: Any, *, keep_rated: bool = True) -> dict[str, list[int]]:
+    """既にDBにある「文章で除外」物件の id を理由ごとに (お気に入り/星評価は守る)。"""
     sql = (
         "SELECT p.id, p.title, p.body FROM properties p"
         " WHERE NOT EXISTS (SELECT 1 FROM favorites f WHERE f.property_id = p.id)"
     )
     if keep_rated:
         sql += " AND NOT EXISTS (SELECT 1 FROM ratings r WHERE r.property_id = p.id)"
-    return [r["id"] for r in conn.execute(sql).fetchall()
-            if is_farmland_bundled(r["title"], r["body"])[0]]
+    out: dict[str, list[int]] = {"農地付き": [], "汲み取り": [], "大幅修繕": []}
+    for r in conn.execute(sql).fetchall():
+        why = text_rule_reason(r["title"], r["body"])
+        if why:
+            out[why].append(r["id"])
+    return out
 
 
 def _pricey_sql() -> str:
@@ -183,14 +200,16 @@ def count_targets(
         ).fetchall()
     ]
 
-    # 農地付き (上の 土地/300万以上 と重ならない分だけ数える)
-    farm_ids = farmland_ids(conn, keep_rated=keep_rated)
+    # 農地付き / 汲み取り / 大幅修繕 (上の 土地/300万以上 と重ならない分だけ数える)
     tgt_ids = {r[0] for r in conn.execute(tgt, (price_cutoff,)).fetchall()}
-    farm_only = [i for i in farm_ids if i not in tgt_ids]
-    total += len(farm_only)
+    by_reason = {k: [i for i in v if i not in tgt_ids]
+                 for k, v in text_rule_ids(conn, keep_rated=keep_rated).items()}
+    total += sum(len(v) for v in by_reason.values())
 
     return {
-        "farmland": len(farm_only),
+        "farmland": len(by_reason["農地付き"]),
+        "kumitori": len(by_reason["汲み取り"]),
+        "major_repair": len(by_reason["大幅修繕"]),
         "all": all_active,
         "total": total,
         "land": land,
@@ -216,7 +235,7 @@ def purge(
         conn.execute(f"DELETE FROM {t} WHERE property_id IN ({tgt})", (price_cutoff,))
     conn.execute(f"DELETE FROM properties WHERE id IN ({tgt})", (price_cutoff,))
 
-    ids = farmland_ids(conn, keep_rated=keep_rated)
+    ids = [i for v in text_rule_ids(conn, keep_rated=keep_rated).values() for i in v]
     for i in range(0, len(ids), 200):
         chunk = ids[i:i + 200]
         qs = ",".join("?" * len(chunk))
@@ -240,7 +259,9 @@ def render_report(stats: dict[str, Any], *, applied: bool) -> str:
         f" (うち価格が不明なもの {stats['land_no_price']:,} 件)",
         f"  ├ 300万円以上      : {stats['pricey']:,} 件",
         f"  ├ 両方に当てはまる : {stats['both']:,} 件  ← 上2つの重複分",
-        f"  └ 農地付き         : {stats.get('farmland', 0):,} 件  (農地は取得できない可能性が高いため)",
+        f"  ├ 農地付き         : {stats.get('farmland', 0):,} 件  (農地は取得できない可能性が高いため)",
+        f"  ├ 汲み取り式トイレ : {stats.get('kumitori', 0):,} 件",
+        f"  └ 大幅な修繕が必要 : {stats.get('major_repair', 0):,} 件  (「大幅な補修が必要」等の明記)",
         "",
         f"守られた物件  : {stats['protected']:,} 件 (★お気に入り・星評価を付けたものは消しません)",
         f"残る物件      : {stats['remaining']:,} 件",

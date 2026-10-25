@@ -82,14 +82,19 @@ def _q(s: str) -> str:
 
 
 def area_sql(cfg: Config | None = None) -> str:
-    """対象地域の SQL 条件 (p.city / p.address)。値は設定ファイル由来で、引用符はエスケープ済み。"""
+    """対象地域の SQL 条件 (p.city / p.address)。値は設定ファイル由来で、引用符はエスケープ済み。
+
+    市町村は IN (...) 1つにまとめる。OR を48個つなぐと本番(Turso)で
+    「式が深すぎる (maximum depth 100)」エラーになるため (2026-10-25)。
+    """
     cfg = cfg or load()
+    plain = [c for c, ward in cfg.areas if not ward]
     parts = []
+    if plain:
+        parts.append(f"p.city IN ({', '.join(_q(c) for c in plain)})")
     for c, ward in cfg.areas:
         if ward:
             parts.append(f"(p.city = {_q(c)} AND p.address LIKE {_q('%' + ward + '%')})")
-        else:
-            parts.append(f"p.city = {_q(c)}")
     return "(" + (" OR ".join(parts) or "0") + ")"
 
 

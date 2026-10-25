@@ -417,6 +417,59 @@ def is_farmland_bundled(title: str | None, body: str | None) -> tuple[bool, str]
     return True, m.group(0)
 
 
+# 汲み取り式トイレの物件 (2026-10-25 ユーザー指示で除外対象)。
+# 「トイレ: 汲み取り」「#汲取り」「下水汲取」等の明記を拾う。
+# ※水洗化済み・下水接続済みと書かれていれば対象外。
+# ※「浄化槽の汲み取り(清掃)」は水洗トイレでも発生するので対象外。
+_KUMITORI_POS = re.compile(r"汲み?取り?|くみ取り|ポットン")
+_KUMITORI_NEG = re.compile(
+    r"(汲み?取り?|くみ取り)[^。\n|]{0,12}(から|より)[^。\n|]{0,10}(水洗|下水|浄化槽)[^。\n|]{0,6}(に|へ)?(変更|改修|切替|切り替|接続|工事)済"
+    r"|水洗化(済|工事済)|下水(道)?(に|へ)?接続済"
+    r"|浄化槽[^。\n|]{0,6}(の)?(汲み?取り?|くみ取り)"
+    r"|(汲み?取り?|くみ取り)(式)?で?は(ありません|ない|なく)"
+)
+
+
+def is_kumitori(title: str | None, body: str | None) -> tuple[bool, str]:
+    """トイレが汲み取り式と書かれた物件か。(True, ヒットした語)。"""
+    text = f"{title or ''} {body or ''}"
+    m = _KUMITORI_POS.search(text)
+    if not m or _KUMITORI_NEG.search(text):
+        return False, ""
+    return True, m.group(0)
+
+
+# 「確実に大幅な修繕が必要」と書かれた物件 (2026-10-25 ユーザー指示で除外対象)。
+# 「大幅な補修が必要」「大規模な修繕が必要」「全面的な修繕が必要」等の“必要”の明記だけを拾う。
+# ※「大規模修繕済」「大規模リフォーム実施」「大規模な補修…が必要な箇所はない」は対象外。
+# ※雨漏り・シロアリ等の単語だけでは決めつけない (程度が分からないため)。
+_MAJOR_REPAIR_POS = re.compile(
+    r"(大幅|大規模|全面的)(な|に|の)?(補修|修繕|改修|改装|リフォーム|リノベ(ーション)?)"
+    r"(・[^。\n|]{1,8})?(工事)?(が|を|は)?(必要|必須|必至|前提|要する|要します|を要)"
+    r"|(大幅|大規模)(補修|修繕|改修|リフォーム)必要"
+    r"|フルリノベ(ーション)?(が)?(前提|必要)"
+)
+_MAJOR_REPAIR_NEG = re.compile(r"必要な(箇所|ところ|部分)は(ない|なく|ありません)")
+
+
+def needs_major_repair(title: str | None, body: str | None) -> tuple[bool, str]:
+    """大幅な修繕が必要とはっきり書かれた物件か。(True, ヒットした語)。
+
+    is_dilapidated の確実な指標のうち「この家が」住めないと読めるもの (解体前提 等) も含める。
+    ※「廃屋」「倒壊」は「付近に廃屋状態の家も」「廃屋化の後に更地に」等、別の建物を
+      指す書き方が実データにあったので、削除の根拠には使わない (一覧では従来通り隠れる)。
+    """
+    text = f"{title or ''} {body or ''}"
+    m = _MAJOR_REPAIR_POS.search(text)
+    if m and not _MAJOR_REPAIR_NEG.search(text[m.start():m.end() + 30]):
+        return True, m.group(0)
+    for kw in ("住める状態ではあり", "居住不可", "解体前提", "取り壊し前提",
+               "取り壊しを前提"):
+        if kw in text:
+            return True, kw
+    return False, ""
+
+
 def classify_property_type(title: str | None, body: str | None) -> str:
     """物件タイプ分類. Returns one of:
        'house'      — 一軒家・戸建て・古民家・農家の家など
