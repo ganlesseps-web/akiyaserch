@@ -25,8 +25,11 @@ def _insert(conn, lid, city, address, price=1_500_000):
     return conn.execute("SELECT id FROM properties WHERE listing_id=?", (lid,)).fetchone()[0]
 
 
-def test_all_48_classified():
-    assert len(communities.load()) == 48
+def test_all_classified():
+    """48市町村調査 + 物件の多い39市町村 (2026-10-25)。"""
+    assert len(communities.load()) == 87
+    assert communities.lookup("吉野郡下市", "")[0] == 2      # DB の city が「下市」で終わる
+    assert communities.lookup("仁多郡奥出雲町", "")[0] == 2
 
 
 def test_lookup_levels_and_ward():
