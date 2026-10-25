@@ -60,3 +60,11 @@ def test_city_name_variants(conn):
     b = _insert(conn, "y", "大東市", "大阪府大東市")
     rows = webapp._query_rows(conn, "all", "community_desc", None)
     assert [r["id"] for r in rows] == [a, b]
+
+
+def test_filter_by_community(conn):
+    top = _insert(conn, "t", "綾部市", "京都府綾部市")
+    mid = _insert(conn, "m", "上田市", "長野県上田市")
+    _insert(conn, "n", "大東市", "大阪府大東市")
+    assert {r["id"] for r in webapp._query_rows(conn, "all", "new", None, comm_min=3)} == {top}
+    assert {r["id"] for r in webapp._query_rows(conn, "all", "new", None, comm_min=2)} == {top, mid}

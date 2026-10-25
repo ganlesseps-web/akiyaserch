@@ -143,6 +143,7 @@ def _query_rows(
     price_min: int | None = None,
     price_max: int | None = None,
     verdict: str | None = None,
+    comm_min: int | None = None,
     limit: int = 200,
 ) -> list[Any]:
     base = """
@@ -279,6 +280,10 @@ def _query_rows(
         params.append(verdict)
     elif verdict == "未判定":
         base += " AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id)"
+
+    # 移住者の集まりでしぼる (3=◎のみ / 2=◎と○)。値は整数に限定して埋める
+    if comm_min in (1, 2, 3):
+        base += f" AND {communities.level_sql()} >= {int(comm_min)}"
 
     if sort == "community_desc":
         # 移住者の集まりが活発な地域 (◎→○→△→未調査) の順。同じ段階なら新着順。
@@ -454,6 +459,7 @@ def index(
     price_min: str | None = None,
     price_max: str | None = None,
     verdict: str | None = None,
+    comm: str | None = None,
     _=Depends(auth),
 ) -> HTMLResponse:
     _ensure_schema()
@@ -465,6 +471,7 @@ def index(
             price_min=_man_to_yen(price_min),
             price_max=_man_to_yen(price_max),
             verdict=verdict or None,
+            comm_min=int(comm) if comm in ("1", "2", "3") else None,
         )
         counts = _counts(conn)
         prefectures = _prefectures(conn)
@@ -476,7 +483,7 @@ def index(
             "rows": rows, "view": view, "sort": sort, "q": q or "",
             "pref": pref or "", "city": city or "",
             "price_min": price_min or "", "price_max": price_max or "",
-            "verdict": verdict or "",
+            "verdict": verdict or "", "comm": comm or "",
             "verdict_options": [("検討可", "✅検討可"), ("警告", "⚠️警告"),
                                 ("未判定", "AI未判定"), ("見送り", "🚫見送り")],
             "prefectures": prefectures, "cities": cities,
