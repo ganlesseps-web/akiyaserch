@@ -4,9 +4,17 @@
 .bukken_entry に物件、タイトル `New！No561.美山町田歌の物件　2880万円` 形式で
 価格・物件番号が埋め込み。icon img alt で売買/賃貸判定。
 ページネーション: /houses/page/N/ (8ページ程度)。
+
+2026-10-25 追加:
+- 一覧には設備が無いので、400万円未満 (=収集・交渉候補の対象) だけ詳細ページを読み、
+  【物件の所在地】〜【賃貸・売買の意向】(トイレ: 汲み取り / 建物現状程度 等) を本文に足す。
+  これで汲み取り式・大規模修繕要の物件を収集ルールで弾ける。
+- 「月額 45,000円 又は 350万円」のように家賃と売値が並ぶタイトルは売値を取る
+  (家賃が価格として入っていた)。
 """
 from __future__ import annotations
 
+import dataclasses
 import logging
 import re
 from typing import Iterator
@@ -24,6 +32,7 @@ LIST_URL_TMPL = "https://www.nancla.jp/houses/{page}"
 MAX_PAGES = 15
 NO_RE = re.compile(r"No\.?\s*(\d+)", re.I)
 PRICE_RE = re.compile(r"([\d,]+万[\d,]*\s*円|[\d,]+\s*円)")
+DETAIL_PRICE_LIMIT_MAN = 400  # これ未満 (万円) だけ詳細ページを読む
 ADDRESS_RE = re.compile(r"【住所】\s*([^\n【]+)")
 
 
@@ -52,7 +61,7 @@ class NanclaScraper:
                     continue
                 seen.add(listing.listing_id)
                 page_new += 1
-                yield listing
+                yield _with_detail(client, listing)
             logger.info("nancla: page %d -> %d new (total %d)", page, page_new, len(seen))
             if page_new == 0:
                 break
@@ -97,11 +106,14 @@ def _parse_entry(entry: Tag) -> RawListing | None:
     if "土地" in icon_text and "空き家" not in icon_text and "戸建" not in icon_text:
         return None
 
-    # 価格: title 内に「2880万円」のように埋め込み
+    # 価格: title 内に「2880万円」のように埋め込み。
+    # 「月額 45,000円 又は 350万円」は家賃を飛ばして売値を取る。
     price_text: str | None = None
-    pm = PRICE_RE.search(title)
-    if pm:
+    for pm in PRICE_RE.finditer(title):
+        if "月額" in title[max(0, pm.start() - 6):pm.start()]:
+            continue
         price_text = pm.group(0).replace(",", "")
+        break
 
     # 住所
     body_el = entry.select_one(".bukken_text")
@@ -140,3 +152,44 @@ def _parse_entry(entry: Tag) -> RawListing | None:
         posted_at=None,
         property_type_hint="house",
     )
+
+
+def _price_man(price_text: str | None) -> float | None:
+    if not price_text:
+        return None
+    m = re.match(r"(\d+)万", price_text)
+    if m:
+        return float(m.group(1))
+    m = re.match(r"(\d+)\s*円", price_text)
+    return int(m.group(1)) / 10_000 if m else None
+
+
+def parse_detail(html: bytes | str) -> str:
+    """詳細ページから【物件の所在地】〜投稿ナビゲーション手前 (設備・建物の状態) を取り出す。"""
+    soup = BeautifulSoup(html, "lxml")
+    for el in soup.select("script, style"):
+        el.decompose()
+    text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
+    i = text.find("【物件の所在地】")
+    if i < 0:
+        i = text.find("価格：")
+    if i < 0:
+        return ""
+    j = text.find("投稿ナビゲーション", i)
+    return text[i: j if j > 0 else i + 1500][:1500]
+
+
+def _with_detail(client: httpx.Client, listing: RawListing) -> RawListing:
+    man = _price_man(listing.price_text)
+    if man is None or man >= DETAIL_PRICE_LIMIT_MAN or not listing.url.startswith(BASE_URL + "/houses/"):
+        return listing
+    try:
+        extra = parse_detail(polite_get(client, listing.url).content)
+    except httpx.HTTPError as e:
+        logger.warning("nancla detail %s failed: %s", listing.listing_id, e)
+        return listing
+    if not extra:
+        return listing
+    hint = "commercial" if "【物件の種類】 店舗" in extra else listing.property_type_hint
+    body = " | ".join(x for x in (listing.body, extra) if x)
+    return dataclasses.replace(listing, body=body[:4000], property_type_hint=hint)
