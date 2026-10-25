@@ -580,5 +580,6 @@ TEMPLATES.env.globals["community_badge"] = communities.badge
 
 
 @app.get("/healthz")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+def healthz() -> dict[str, Any]:
+    # 本番に設定ファイルが載っているかをパスワードなしで確かめる用 (件数だけ。中身は出さない)
+    return {"status": "ok", "communities": len(communities.load())}

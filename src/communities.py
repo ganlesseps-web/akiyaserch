@@ -16,12 +16,15 @@ LABELS = {3: "移住者の交流が活発", 2: "移住体験・支援拠点あ�
 
 _cache: list[tuple[str, str, int, str]] | None = None   # (市, 区, level, note)
 
+# 実行場所 (Vercel など) に左右されないよう、このファイルの位置から探す
+DEFAULT_PATH = Path(__file__).resolve().parent.parent / "config" / "communities.yaml"
+
 
 def load(path: Path | None = None) -> list[tuple[str, str, int, str]]:
     global _cache
     if _cache is not None and path is None:
         return _cache
-    p = path or Path("config/communities.yaml")
+    p = path or DEFAULT_PATH
     data = yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {}
     out = []
     for name, v in ((data or {}).get("communities") or {}).items():
