@@ -51,6 +51,11 @@
   .warn-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
   .warn-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
                background: #fff6e0; color: #8a6100; border: 1px solid #f0dfae; white-space: nowrap; }
+  .comm-badge { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem;
+                white-space: nowrap; border: 1px solid; }
+  .comm-3 { background: #e9f2fb; color: #1d4f86; border-color: #bcd6f0; font-weight: 600; }
+  .comm-2 { background: #f2f6fa; color: #3d5f80; border-color: #d3e0ec; }
+  .comm-1 { background: #f6f6f6; color: #666; border-color: #e2e2e2; }
   .nego-row { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
   .nego-chip { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 0.7rem;
                background: #eef6ee; color: #2f6b3a; border: 1px solid #cfe3d1; white-space: nowrap; }
@@ -175,6 +180,10 @@
       <span style="color:#aaa;">{{ r['source'] }} ／ {{ r['first_seen_at'][:10] }}</span>
       {% if r['ai_reason'] %}<br><span style="color:#888;font-style:italic;">{{ r['ai_reason'] }}</span>{% endif %}
     </div>
+    {% set cb = community_badge(r) %}
+    {% if cb %}
+      <div class="nego-row"><span class="comm-badge comm-{{cb.level}}" title="{{cb.note}}">👥 {{cb.mark}} {{cb.label}}</span><span style="font-size:0.7rem;color:#777;">{{cb.note}}</span></div>
+    {% endif %}
     {% if view == 'nego' %}
       {% set marks = nego_marks(r) %}
       {% if marks %}<div class="nego-row">{% for m in marks %}<span class="nego-chip">{{ m }}</span>{% endfor %}</div>{% endif %}

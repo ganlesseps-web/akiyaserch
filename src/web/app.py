@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import db, enrich, municipalities, negotiation
+from .. import communities, db, enrich, municipalities, negotiation
 
 app = FastAPI(title="trade dashboard")
 
@@ -280,7 +280,10 @@ def _query_rows(
     elif verdict == "未判定":
         base += " AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id)"
 
-    if view == "nego" and sort == "new":
+    if sort == "community_desc":
+        # 移住者の集まりが活発な地域 (◎→○→△→未調査) の順。同じ段階なら新着順。
+        sort_sql = f"{communities.level_sql()} DESC, p.first_seen_at DESC"
+    elif view == "nego" and sort == "new":
         sort_sql = f"{_NEGO_RANK} DESC, p.price ASC, p.first_seen_at DESC"
     elif view == "pricedown":
         # 値下げタブは常に「値下がりが新しい順」で並べる (このタブの主役は値下げなので)。
@@ -481,6 +484,7 @@ def index(
             "sort_options": [
                 ("new", "新着順"),
                 ("verdict_best", "AI判定の良い順"),
+                ("community_desc", "移住者の集まりが活発な順"),
                 ("price_asc", "安い順"),
                 ("price_desc", "高い順"),
                 ("area_desc", "広い順"),
@@ -572,6 +576,7 @@ TEMPLATES.env.globals["render_stars"] = _render_stars
 TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
 TEMPLATES.env.globals["warning_chips"] = _warning_chips
 TEMPLATES.env.globals["nego_marks"] = negotiation.marks
+TEMPLATES.env.globals["community_badge"] = communities.badge
 
 
 @app.get("/healthz")
