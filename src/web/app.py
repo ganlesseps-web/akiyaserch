@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import communities, db, enrich, municipalities, negotiation
+from .. import communities, db, enrich, municipalities, negotiation, resale_ai
 
 app = FastAPI(title="trade dashboard")
 
@@ -99,6 +99,14 @@ STALE_EXCLUSION = (
     f" AND (p.listed_at IS NULL OR p.listed_at > date('now', '-{STALE_YEARS} years'))"
 )
 
+# 出口 (民泊/賃貸/再販=最悪0円で手放せるか) が見込めないと AI が判定した物件 (2026-10-28)。
+# 未判定 (exit_* が全部 NULL) は「判定待ち」として一覧に残す。
+_EXIT_JUDGED = "COALESCE(r.exit_minpaku, r.exit_rental, r.exit_resale) IS NOT NULL"
+_NO_EXIT = f"({_EXIT_JUDGED} AND NOT {resale_ai.EXIT_OK_SQL})"
+NO_EXIT_EXCLUSION = (
+    f" AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id AND {_NO_EXIT})"
+)
+
 # 交渉候補 (300万〜400万円) は「🤝交渉候補」タブ専用。通常の一覧には出さない。
 # 価格不明 (NULL) は従来通り通常の一覧に出す。
 NORMAL_PRICE = f" AND (p.price IS NULL OR p.price < {negotiation.NORMAL_PRICE_MAX})"
@@ -160,7 +168,11 @@ def _query_rows(
             (SELECT new_price FROM price_drops d WHERE d.property_id = p.id
                  ORDER BY d.dropped_at DESC LIMIT 1) AS drop_new_price,
             (SELECT verdict FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict,
-            (SELECT reasons FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict_reason
+            (SELECT reasons FROM resale_ai r WHERE r.property_id = p.id) AS ai_verdict_reason,
+            (SELECT exit_minpaku FROM resale_ai r WHERE r.property_id = p.id) AS exit_minpaku,
+            (SELECT exit_rental FROM resale_ai r WHERE r.property_id = p.id) AS exit_rental,
+            (SELECT exit_resale FROM resale_ai r WHERE r.property_id = p.id) AS exit_resale,
+            (SELECT exit_reason FROM resale_ai r WHERE r.property_id = p.id) AS exit_reason
         FROM properties p
         WHERE p.status = ?
     """
@@ -216,6 +228,12 @@ def _query_rows(
         # 掲載が長い・値下げ歴ありの物件に印を付け、印の多い順に並べる。
         base += negotiation.band_sql()
         base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+    elif view == "noexit":
+        # 「🚪出口なし(確認用)」: AI が出口を見込めないと判定して一覧から隠した物件。
+        base += (
+            f" AND EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id AND {_NO_EXIT})"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+        )
     elif view == "free":
         # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
         # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
@@ -229,7 +247,7 @@ def _query_rows(
     # 「住める空き家だけ」: 発見系ビューでは“住めない物件”(dilapidated) と
     # “修繕が必要と明記された物件”(needs_repair) を隠す。お気に入り/通知済み/
     # 評価済み/却下 はユーザーが明示的に作った一覧なのでそのまま全件表示する。
-    if view not in ("favorites", "notified", "dismissed", "rated", "skipped", "sold"):
+    if view not in ("favorites", "notified", "dismissed", "rated", "skipped", "sold", "noexit"):
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         # 再販ハード除外 (再建築不可/借地/共有持分/井戸のみ/浸水3m超 等)
@@ -238,13 +256,15 @@ def _query_rows(
         # ※ NOT EXISTS で書くこと。`verdict != '見送り'` と書くと NULL 比較が偽になり、
         #   AI未判定の物件まで丸ごと消える。
         base += SKIPPED_EXCLUSION
+        # 出口が見込めない物件は一覧に出さない (未判定は残す)
+        base += NO_EXIT_EXCLUSION
         # 掲載から5年超の長期売れ残りは一覧に出さない (ユーザー指定の除外条件)。
         # listed_at が NULL (未取得) の物件は除外しない = デフォルト通過。
         # ※交渉候補タブでは出す (長く売れ残っている家ほど値引きの余地があるため)
         if view != "nego":
             base += STALE_EXCLUSION
             base += NORMAL_PRICE
-    elif view == "skipped":
+    elif view in ("skipped", "noexit"):
         base += NORMAL_PRICE
 
     if q:
@@ -313,6 +333,7 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
         + SKIPPED_EXCLUSION   # 見送りは一覧に出さない (件数も揃える)
+        + NO_EXIT_EXCLUSION   # 出口が見込めない物件も同様
     )
     nego_live = live   # 交渉候補タブ: 5年超も出す・300万円以上も出す
     live = live + STALE_EXCLUSION + NORMAL_PRICE  # 掲載5年超・交渉候補は通常の一覧に出さない
@@ -343,6 +364,11 @@ def _counts(conn: Any) -> dict[str, int]:
             + NORMAL_PRICE
         ),
         "nego": count(negotiation.band_sql() + nego_live),
+        "noexit": count(
+            f" AND EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id AND {_NO_EXIT})"
+            " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
+            + NORMAL_PRICE
+        ),
         "favorites": conn.execute("SELECT COUNT(*) FROM favorites").fetchone()[0],
         "notified": conn.execute(
             "SELECT COUNT(DISTINCT property_id) FROM notifications"
@@ -398,7 +424,7 @@ def _warning_chips(row: Any) -> list[str]:
     def get(key: str) -> Any:
         try:
             return row[key]
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
             return None
 
     chips: list[str] = []
@@ -417,6 +443,25 @@ def _warning_chips(row: Any) -> list[str]:
 
     # AI判定は専用バッジで表示するので、ここでは重複させない
     return chips
+
+
+def _exit_badge(row: Any) -> dict[str, Any]:
+    """物件カードの「🚪 出口」表示。未判定なら judged=False。"""
+    mark = {"見込める": "◎", "厳しい": "×", "不明": "？"}
+    try:
+        vals = {k: row[k] for k in resale_ai.EXIT_KEYS}
+        reason = row["exit_reason"]
+    except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
+        return {"judged": False}
+    ok = resale_ai.exit_ok(vals)
+    if ok is None:
+        return {"judged": False}
+    return {
+        "judged": True, "ok": ok, "reason": reason or "",
+        "parts": [("民泊", mark.get(vals["exit_minpaku"], "？")),
+                  ("賃貸", mark.get(vals["exit_rental"], "？")),
+                  ("再販", mark.get(vals["exit_resale"], "？"))],
+    }
 
 
 def _fmt_price_short(yen: int | None) -> str:
@@ -584,6 +629,7 @@ TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
 TEMPLATES.env.globals["warning_chips"] = _warning_chips
 TEMPLATES.env.globals["nego_marks"] = negotiation.marks
 TEMPLATES.env.globals["community_badge"] = communities.badge
+TEMPLATES.env.globals["exit_badge"] = _exit_badge
 
 
 @app.get("/healthz")

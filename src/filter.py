@@ -140,6 +140,16 @@ def passes(
         if v is not None:
             return False, "ai_verdict: 見送り"
 
+    # 出口 (民泊/賃貸/再販) が見込めないと AI が判定した物件は通知しない (2026-10-28)。
+    # 未判定は通す (一覧と同じく「判定待ち」扱い)。
+    from .resale_ai import exit_ok
+    ex = conn.execute(
+        "SELECT exit_minpaku, exit_rental, exit_resale FROM resale_ai WHERE property_id = ?",
+        (row["id"],),
+    ).fetchone()
+    if ex is not None and exit_ok(ex) is False:
+        return False, "exit: 出口が見込めない"
+
     pref = row["prefecture"]
     if pref is None:
         return False, "prefecture unknown"

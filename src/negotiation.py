@@ -132,7 +132,7 @@ def marks(row: Any, *, today: date | None = None, cfg: Config | None = None) -> 
     def get(key: str) -> Any:
         try:
             return row[key]
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
             return None
 
     out: list[str] = []

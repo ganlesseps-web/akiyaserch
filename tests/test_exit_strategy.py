@@ -30,3 +30,57 @@ def test_prompt_includes_municipality_info():
     text = resale_ai.format_property({"title": "家", "price": 1000000, "city": "高梁市",
                                        "address": "岡山県高梁市"})
     assert "市町村の情報: 高梁市" in text and "観光資源あり" in text
+
+
+# ---- 一覧への反映 ----
+import sqlite3  # noqa: E402
+
+from src import db  # noqa: E402
+from src.web import app as webapp  # noqa: E402
+
+
+@pytest.fixture
+def conn():
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.executescript(db.SCHEMA)
+    db._run_migrations(c)
+    yield c
+    c.close()
+
+
+def _prop(conn, lid, exits=None):
+    conn.execute("INSERT INTO properties (source, listing_id, url, title, price, city, address,"
+                 " first_seen_at, last_seen_at, status, property_type)"
+                 " VALUES ('t', ?, 'u', ?, 1500000, '津山市', '岡山県津山市', ?, ?, 'active', 'house')",
+                 (lid, f"物件{lid}", db.now_iso(), db.now_iso()))
+    pid = conn.execute("SELECT id FROM properties WHERE listing_id=?", (lid,)).fetchone()[0]
+    if exits:
+        conn.execute("INSERT INTO resale_ai (property_id, verdict, prompt_hash, model, assessed_at,"
+                     " exit_minpaku, exit_rental, exit_resale, exit_reason)"
+                     " VALUES (?, '検討可', 'h', 'm', ?, ?, ?, ?, '理由')",
+                     (pid, db.now_iso(), *exits))
+    return pid
+
+
+def test_list_hides_no_exit_keeps_pending(conn):
+    ok = _prop(conn, "ok", ("厳しい", "見込める", "見込める"))
+    ng = _prop(conn, "ng", ("見込める", "見込める", "厳しい"))
+    pending = _prop(conn, "p")
+    old = _prop(conn, "old")   # 旧仕様で判定済み (exit_* が空) = 判定待ち
+    conn.execute("INSERT INTO resale_ai (property_id, verdict, prompt_hash, model, assessed_at)"
+                 " VALUES (?, '検討可', 'old', 'm', ?)", (old, db.now_iso()))
+    ids = {r["id"] for r in webapp._query_rows(conn, "all", "new", None)}
+    assert ids == {ok, pending, old}
+    assert {r["id"] for r in webapp._query_rows(conn, "noexit", "new", None)} == {ng}
+    c = webapp._counts(conn)
+    assert c["all"] == 3 and c["noexit"] == 1
+
+
+def test_exit_badge(conn):
+    _prop(conn, "ok", ("厳しい", "見込める", "見込める"))
+    _prop(conn, "p")
+    rows = {r["listing_id"]: r for r in webapp._query_rows(conn, "all", "new", None)}
+    b = webapp._exit_badge(rows["ok"])
+    assert b["judged"] and b["ok"] and b["parts"][0] == ("民泊", "×")
+    assert webapp._exit_badge(rows["p"]) == {"judged": False}

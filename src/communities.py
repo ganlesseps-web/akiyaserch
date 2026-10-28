@@ -58,7 +58,7 @@ def badge(row) -> dict | None:
     def get(key):
         try:
             return row[key]
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
             return None
     level, note = lookup(get("city"), get("address"))
     if not level:

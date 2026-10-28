@@ -46,17 +46,23 @@ SYSTEM_PROMPT = """あなたは日本の地方の中古住宅を「再販・賃�
               どの出口でも救いにくい要素が明記されている。
 - reasons: 60字以内の日本語。判断の根拠を簡潔に。
 
-【出口の見立て】(ここは事実の抽出ではなく、プロとしての見立て。立地・市町村の情報・建物の状態から判断する)
-- exit_minpaku (民泊): 観光地・温泉・城下町・自然体験の近さ、駅や観光地からの行きやすさ、
-  客を泊められる広さと状態か。観光客が来ない土地・住宅密集で近所トラブルになりやすい場所は "厳しい"。
-- exit_rental (賃貸): 工場・大学・病院・自衛隊・大きな町への通勤圏など、借りる人がいるか。
-  駐車場が取れるか(地方は車必須)。人口が少なく借り手の核が無い場所は "厳しい"。
+【出口の見立て】(事実の抽出ではなく、プロとしての見立て。ただし根拠は必ずこの物件の情報に置く)
+- 重要: 「市町村の情報」だけを根拠に "見込める" にしないこと。市が観光地・通勤圏でも、
+  この物件の場所(駅・観光地・町なかからの近さ)や状態が分からなければ "不明"、
+  山あい・集落の奥・観光地から遠いと読み取れれば "厳しい" にする。
+- exit_minpaku (民泊): この物件が観光地・温泉街・城下町・海や山の体験の拠点の近く
+  (目安 車15分以内)にある、または駅・観光地から行きやすいと読み取れ、客を泊められる
+  広さと状態があるときだけ "見込める"。住宅密集地の狭小住宅、観光地から遠い場所は "厳しい"。
+- exit_rental (賃貸): 市町村に借り手の核(工場/大学/病院/自衛隊/大きな町への通勤圏)があり、
+  かつこの物件が町なか・駅や幹線道路の近くで、駐車場が取れる(地方は車必須)と読み取れるとき
+  "見込める"。人口が少なく借り手の核が無い、山奥、駐車場が無い明記 は "厳しい"。
 - exit_resale (再販・最悪0円で手放せるか): 自分が使い終わったあと、売るか、最悪でも0円で
   引き取ってもらえるか。再建築できない・道に接していない・土砂災害の特別警戒区域・
-  山奥の孤立集落・建物が崩れかけ、など「タダでも誰も要らない」家は "厳しい"。
-  家の状態がそこそこで、生活できる場所にあれば "見込める"。
-- 各項目は "見込める" / "厳しい" / "不明"。"不明" は判断材料がほぼ無いときだけ使う。
-- exit_reason: 40字以内の日本語。どの出口がなぜ見込める/厳しいか。
+  山奥の孤立集落・水の確保が不安・建物が崩れかけ、など「タダでも誰も要らない」家は "厳しい"。
+  生活できる場所にあり、家が住める状態なら "見込める"。
+- 賃貸として募集中の物件(家賃の表示)・契約済み・土地だけは、どれも "厳しい" にする。
+- 各項目は "見込める" / "厳しい" / "不明"。
+- exit_reason: 40字以内の日本語。この物件のどんな情報から、どの出口がなぜ見込める/厳しいか。
 
 【例外ルール】
 和式トイレであっても、浴室など他が使える状態で「風呂だけ直せば住めそう」なら
@@ -90,7 +96,7 @@ def exit_ok(r: Any) -> bool | None:
     def get(k: str) -> Any:
         try:
             return r[k]
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
             return None
     vals = [get(k) for k in EXIT_KEYS]
     if not any(vals):
@@ -130,7 +136,7 @@ def format_property(row: Any) -> str:
     def get(key: str, default: Any = None) -> Any:
         try:
             return row[key]
-        except (KeyError, IndexError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
             return default
 
     parts = [f"タイトル: {get('title')}"]
@@ -189,6 +195,20 @@ def assess_property(row: Any, cfg: llm.LLMConfig | None = None) -> tuple[dict[st
     return _clamp(data), used_model
 
 
+def _write_with_retry(conn: Any, sql: str, params: tuple, tries: int = 3) -> None:
+    """本番DB (Turso) は通信が一時的に切れることがある (2026-10-28 実測)。数回やり直す。"""
+    import time
+    for i in range(tries):
+        try:
+            conn.execute(sql, params)
+            return
+        except Exception as e:  # noqa: BLE001
+            if i == tries - 1:
+                raise
+            logger.warning("DB write failed (retry %d): %s", i + 1, e)
+            time.sleep(2 * (i + 1))
+
+
 def assess_unassessed(
     conn: Any, *, limit: int = 50, cfg: llm.LLMConfig | None = None
 ) -> dict[str, int]:
@@ -236,7 +256,8 @@ def assess_unassessed(
             logger.warning("assess failed for property %s: %s", row["id"], e)
             stats["failed"] += 1
             continue
-        conn.execute(
+        _write_with_retry(
+            conn,
             """
             INSERT OR REPLACE INTO resale_ai
               (property_id, verdict, toilet, bath, lifeline, parking,
