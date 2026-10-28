@@ -317,6 +317,11 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN enriched_at TEXT",
     # 掲載終了(売れた/取り下げ)を検知した日時。status='sold' とセット。
     "ALTER TABLE properties ADD COLUMN sold_at TEXT",
+    # 出口戦略の AI 判定 (2026-10-28): 民泊/賃貸/再販(最悪0円で手放せるか) = 見込める/厳しい/不明
+    "ALTER TABLE resale_ai ADD COLUMN exit_minpaku TEXT",
+    "ALTER TABLE resale_ai ADD COLUMN exit_rental TEXT",
+    "ALTER TABLE resale_ai ADD COLUMN exit_resale TEXT",
+    "ALTER TABLE resale_ai ADD COLUMN exit_reason TEXT",
 ]
 
 

@@ -1,0 +1,32 @@
+"""出口戦略 (民泊/賃貸/再販) の AI 判定 (2026-10-28 ユーザー指示) のテスト。"""
+import pytest
+
+from src import resale_ai
+
+
+@pytest.mark.parametrize("vals,expected", [
+    (("見込める", "厳しい", "見込める"), True),
+    (("厳しい", "見込める", "不明"), True),        # 賃貸で出口あり・再販は不明でも可
+    (("見込める", "見込める", "厳しい"), False),    # 最悪0円でも手放せない家は外す
+    (("厳しい", "厳しい", "不明"), False),
+    (("不明", "不明", "不明"), False),             # 出口を確かめられない
+    ((None, None, None), None),                    # 未判定 = 判定待ち
+])
+def test_exit_ok(vals, expected):
+    row = dict(zip(resale_ai.EXIT_KEYS, vals))
+    assert resale_ai.exit_ok(row) is expected
+
+
+def test_clamp_exit_fields():
+    out = resale_ai._clamp({"verdict": "検討可", "exit_minpaku": "見込める",
+                            "exit_rental": "たぶん", "exit_reason": "温泉街で民泊向き"})
+    assert out["exit_minpaku"] == "見込める"
+    assert out["exit_rental"] == "不明"           # 想定外の値は不明に丸める
+    assert out["exit_resale"] == "不明"
+    assert out["exit_reason"] == "温泉街で民泊向き"
+
+
+def test_prompt_includes_municipality_info():
+    text = resale_ai.format_property({"title": "家", "price": 1000000, "city": "高梁市",
+                                       "address": "岡山県高梁市"})
+    assert "市町村の情報: 高梁市" in text and "観光資源あり" in text

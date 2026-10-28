@@ -10,6 +10,11 @@
 - verdict はハード除外に使わない。あくまで⚠️警告/参考表示で、最終判断は人間。
 - 分からないものは「不明」を返させる (推測で埋めない)。
 - 「和式トイレでも、風呂だけ直せば住めそうなら検討可」の例外ルールを明記。
+
+2026-10-28 追加 (ユーザー指示「民泊・賃貸・再販(最悪0円で処分できる)の出口が見込める物件のみ」):
+- exit_minpaku / exit_rental / exit_resale を「見込める/厳しい/不明」で判定させる。
+  出口は“見立て”なので、設備の事実と違い、立地・市町村の情報から判断してよいとする。
+- 一覧に残すのは exit_ok() が True のものだけ (1つ以上「見込める」かつ 再販が「厳しい」でない)。
 """
 from __future__ import annotations
 
@@ -41,12 +46,25 @@ SYSTEM_PROMPT = """あなたは日本の地方の中古住宅を「再販・賃�
               どの出口でも救いにくい要素が明記されている。
 - reasons: 60字以内の日本語。判断の根拠を簡潔に。
 
+【出口の見立て】(ここは事実の抽出ではなく、プロとしての見立て。立地・市町村の情報・建物の状態から判断する)
+- exit_minpaku (民泊): 観光地・温泉・城下町・自然体験の近さ、駅や観光地からの行きやすさ、
+  客を泊められる広さと状態か。観光客が来ない土地・住宅密集で近所トラブルになりやすい場所は "厳しい"。
+- exit_rental (賃貸): 工場・大学・病院・自衛隊・大きな町への通勤圏など、借りる人がいるか。
+  駐車場が取れるか(地方は車必須)。人口が少なく借り手の核が無い場所は "厳しい"。
+- exit_resale (再販・最悪0円で手放せるか): 自分が使い終わったあと、売るか、最悪でも0円で
+  引き取ってもらえるか。再建築できない・道に接していない・土砂災害の特別警戒区域・
+  山奥の孤立集落・建物が崩れかけ、など「タダでも誰も要らない」家は "厳しい"。
+  家の状態がそこそこで、生活できる場所にあれば "見込める"。
+- 各項目は "見込める" / "厳しい" / "不明"。"不明" は判断材料がほぼ無いときだけ使う。
+- exit_reason: 40字以内の日本語。どの出口がなぜ見込める/厳しいか。
+
 【例外ルール】
 和式トイレであっても、浴室など他が使える状態で「風呂だけ直せば住めそう」なら
 "検討可" にしてよい (洋式化は10〜25万円で、この価格帯では致命傷ではない)。
 
 出力は次の JSON のみ。他のテキストは一切出力しないこと。
-{"toilet":"...","bath":"...","lifeline":"...","parking":"...","vacancy_hint":"...","verdict":"...","reasons":"..."}
+{"toilet":"...","bath":"...","lifeline":"...","parking":"...","vacancy_hint":"...","verdict":"...","reasons":"...",
+ "exit_minpaku":"...","exit_rental":"...","exit_resale":"...","exit_reason":"..."}
 """
 
 _ALLOWED = {
@@ -56,7 +74,35 @@ _ALLOWED = {
     "parking": {"あり", "なし", "不明"},
     "vacancy_hint": {"長期", "短期", "不明"},
     "verdict": {"検討可", "警告", "見送り"},
+    "exit_minpaku": {"見込める", "厳しい", "不明"},
+    "exit_rental": {"見込める", "厳しい", "不明"},
+    "exit_resale": {"見込める", "厳しい", "不明"},
 }
+EXIT_KEYS = ("exit_minpaku", "exit_rental", "exit_resale")
+
+
+def exit_ok(r: Any) -> bool | None:
+    """出口が見込めるか。未判定 (exit_* が空) なら None。
+
+    残す条件 (ユーザー決定 2026-10-28): 民泊・賃貸・再販のうち1つ以上「見込める」
+    かつ 再販(最悪0円で手放せるか)が「厳しい」ではない。
+    """
+    def get(k: str) -> Any:
+        try:
+            return r[k]
+        except (KeyError, IndexError, TypeError):
+            return None
+    vals = [get(k) for k in EXIT_KEYS]
+    if not any(vals):
+        return None
+    return "見込める" in vals and get("exit_resale") != "厳しい"
+
+
+# exit_ok と同じ条件の SQL (resale_ai を r として参照)。一覧の絞り込みに使う。
+EXIT_OK_SQL = (
+    "('見込める' IN (r.exit_minpaku, r.exit_rental, r.exit_resale)"
+    " AND COALESCE(r.exit_resale, '') != '厳しい')"
+)
 
 # Gemini の構造化出力 (generateContent の responseSchema)。
 # 型は大文字 (STRING/OBJECT) が公式ドキュメントの表記。enum で値を強制する。
@@ -68,8 +114,9 @@ RESPONSE_SCHEMA: dict[str, Any] = {
             for key, vals in _ALLOWED.items()
         },
         "reasons": {"type": "STRING"},
+        "exit_reason": {"type": "STRING"},
     },
-    "required": [*sorted(_ALLOWED), "reasons"],
+    "required": [*sorted(_ALLOWED), "reasons", "exit_reason"],
 }
 
 
@@ -97,6 +144,17 @@ def format_property(row: Any) -> str:
     body = get("body")
     if body:
         parts.append(f"概要:\n{str(body)[:1500]}")
+    # 出口の見立て用: 市町村の情報 (config/municipalities.yaml)。無ければ書かない
+    from . import municipalities
+    m = municipalities.lookup(get("city"))
+    if m is not None:
+        info = []
+        if m.population:
+            info.append(f"人口 約{m.population:,}人")
+        info.append("賃貸需要の核あり(工場/大学/病院/通勤圏など)" if m.rental_demand
+                    else "賃貸需要の核は特になし")
+        info.append("全国的な観光資源あり" if m.tourism else "全国的な観光資源は特になし")
+        parts.append(f"市町村の情報: {get('city')} / " + " / ".join(info))
     return "\n".join(parts)
 
 
@@ -107,6 +165,7 @@ def _clamp(data: dict[str, Any]) -> dict[str, str]:
         v = str(data.get(key) or "").strip()
         out[key] = v if v in allowed else ("検討可" if key == "verdict" else "不明")
     out["reasons"] = str(data.get("reasons") or "").strip()[:200]
+    out["exit_reason"] = str(data.get("exit_reason") or "").strip()[:200]
     return out
 
 
@@ -181,11 +240,13 @@ def assess_unassessed(
             """
             INSERT OR REPLACE INTO resale_ai
               (property_id, verdict, toilet, bath, lifeline, parking,
-               vacancy_hint, reasons, prompt_hash, model, assessed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               vacancy_hint, reasons, prompt_hash, model, assessed_at,
+               exit_minpaku, exit_rental, exit_resale, exit_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (row["id"], r["verdict"], r["toilet"], r["bath"], r["lifeline"],
-             r["parking"], r["vacancy_hint"], r["reasons"], phash, used_model, now),
+             r["parking"], r["vacancy_hint"], r["reasons"], phash, used_model, now,
+             r["exit_minpaku"], r["exit_rental"], r["exit_resale"], r["exit_reason"]),
         )
         stats["assessed"] += 1
         logger.info("assessed %s → %s (%s)", row["id"], r["verdict"], r["reasons"][:30])
