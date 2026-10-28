@@ -191,7 +191,9 @@
     </div>
     {% set eb = exit_badge(r) %}
     <div class="nego-row">
-      {% if eb.judged %}
+      {% if eb.judged and eb.check %}
+        <span class="exit-chip wait" style="background:#fff6e0;color:#8a6100;border-color:#f0dfae;" title="{{eb.reason}}">🚪 出口 要確認（説明文から判断できず）</span>
+      {% elif eb.judged %}
         <span class="exit-chip {{ '' if eb.ok else 'ng' }}" title="{{eb.reason}}">🚪 出口 {% for k, m in eb.parts %}{{k}}{{m}} {% endfor %}</span><span style="font-size:0.7rem;color:#777;">{{eb.reason}}</span>
       {% else %}
         <span class="exit-chip wait" title="AIの出口判定がまだです (1日2回、順に判定します)">🚪 出口 判定待ち</span>

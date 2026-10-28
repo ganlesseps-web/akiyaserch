@@ -453,11 +453,11 @@ def _exit_badge(row: Any) -> dict[str, Any]:
         reason = row["exit_reason"]
     except (KeyError, IndexError, TypeError, ValueError):  # 本番DBの行は無い列で ValueError
         return {"judged": False}
-    ok = resale_ai.exit_ok(vals)
-    if ok is None:
+    state = resale_ai.exit_state(vals)
+    if state == "pending":
         return {"judged": False}
     return {
-        "judged": True, "ok": ok, "reason": reason or "",
+        "judged": True, "ok": state != "ng", "check": state == "check", "reason": reason or "",
         "parts": [("民泊", mark.get(vals["exit_minpaku"], "？")),
                   ("賃貸", mark.get(vals["exit_rental"], "？")),
                   ("再販", mark.get(vals["exit_resale"], "？"))],

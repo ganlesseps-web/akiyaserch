@@ -9,7 +9,7 @@ from src import resale_ai
     (("厳しい", "見込める", "不明"), True),        # 賃貸で出口あり・再販は不明でも可
     (("見込める", "見込める", "厳しい"), False),    # 最悪0円でも手放せない家は外す
     (("厳しい", "厳しい", "不明"), False),
-    (("不明", "不明", "不明"), False),             # 出口を確かめられない
+    (("不明", "不明", "不明"), True),              # 判断材料不足 → 要確認で残す
     ((None, None, None), None),                    # 未判定 = 判定待ち
 ])
 def test_exit_ok(vals, expected):
@@ -84,3 +84,17 @@ def test_exit_badge(conn):
     b = webapp._exit_badge(rows["ok"])
     assert b["judged"] and b["ok"] and b["parts"][0] == ("民泊", "×")
     assert webapp._exit_badge(rows["p"]) == {"judged": False}
+
+
+def test_exit_state():
+    assert resale_ai.exit_state(dict(zip(resale_ai.EXIT_KEYS, ("不明",) * 3))) == "check"
+    assert resale_ai.exit_state(dict(zip(resale_ai.EXIT_KEYS, ("見込める", "不明", "不明")))) == "ok"
+    assert resale_ai.exit_state(dict(zip(resale_ai.EXIT_KEYS, ("厳しい", "不明", "不明")))) == "ng"
+    assert resale_ai.exit_state({}) == "pending"
+
+
+def test_unknown_listed_with_check(conn):
+    pid = _prop(conn, "u", ("不明", "不明", "不明"))
+    rows = webapp._query_rows(conn, "all", "new", None)
+    assert [r["id"] for r in rows] == [pid]
+    assert webapp._exit_badge(rows[0])["check"] is True

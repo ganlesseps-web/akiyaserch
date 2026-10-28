@@ -92,6 +92,7 @@ def exit_ok(r: Any) -> bool | None:
 
     残す条件 (ユーザー決定 2026-10-28): 民泊・賃貸・再販のうち1つ以上「見込める」
     かつ 再販(最悪0円で手放せるか)が「厳しい」ではない。
+    例外: 3つとも「不明」(説明文が短く判断できない) は「要確認」として残す (同日ユーザー決定)。
     """
     def get(k: str) -> Any:
         try:
@@ -101,13 +102,30 @@ def exit_ok(r: Any) -> bool | None:
     vals = [get(k) for k in EXIT_KEYS]
     if not any(vals):
         return None
+    if all(v == "不明" for v in vals):
+        return True   # 要確認 (exit_state で区別して表示)
     return "見込める" in vals and get("exit_resale") != "厳しい"
+
+
+def exit_state(r: Any) -> str:
+    """表示用: pending(判定待ち) / ok / check(要確認=判断材料不足) / ng(出口なし)。"""
+    ok = exit_ok(r)
+    if ok is None:
+        return "pending"
+    if not ok:
+        return "ng"
+    try:
+        vals = [r[k] for k in EXIT_KEYS]
+    except (KeyError, IndexError, TypeError, ValueError):
+        return "ok"
+    return "check" if all(v == "不明" for v in vals) else "ok"
 
 
 # exit_ok と同じ条件の SQL (resale_ai を r として参照)。一覧の絞り込みに使う。
 EXIT_OK_SQL = (
-    "('見込める' IN (r.exit_minpaku, r.exit_rental, r.exit_resale)"
+    "(('見込める' IN (r.exit_minpaku, r.exit_rental, r.exit_resale)"
     " AND COALESCE(r.exit_resale, '') != '厳しい')"
+    " OR (r.exit_minpaku = '不明' AND r.exit_rental = '不明' AND r.exit_resale = '不明'))"
 )
 
 # Gemini の構造化出力 (generateContent の responseSchema)。
