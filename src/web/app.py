@@ -107,6 +107,20 @@ NO_EXIT_EXCLUSION = (
     f" AND NOT EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id AND {_NO_EXIT})"
 )
 
+# 出口でしぼるメニュー (2026-10-29 ユーザー指示「出口戦略でもフィルタをかけたい」)
+_R = "SELECT 1 FROM resale_ai r WHERE r.property_id = p.id"
+EXIT_FILTERS = {
+    "minpaku": f" AND EXISTS ({_R} AND r.exit_minpaku = '見込める')",
+    "rental": f" AND EXISTS ({_R} AND r.exit_rental = '見込める')",
+    "resale": f" AND EXISTS ({_R} AND r.exit_resale = '見込める')",
+    "two": (f" AND EXISTS ({_R} AND ((r.exit_minpaku = '見込める') + (r.exit_rental = '見込める')"
+            " + (r.exit_resale = '見込める')) >= 2)"),
+    "check": (f" AND EXISTS ({_R} AND r.exit_minpaku = '不明' AND r.exit_rental = '不明'"
+              " AND r.exit_resale = '不明')"),
+    "pending": (f" AND NOT EXISTS ({_R} AND COALESCE(r.exit_minpaku, r.exit_rental,"
+                " r.exit_resale) IS NOT NULL)"),
+}
+
 # 交渉候補 (300万〜400万円) は「🤝交渉候補」タブ専用。通常の一覧には出さない。
 # 価格不明 (NULL) は従来通り通常の一覧に出す。
 NORMAL_PRICE = f" AND (p.price IS NULL OR p.price < {negotiation.NORMAL_PRICE_MAX})"
@@ -152,6 +166,7 @@ def _query_rows(
     price_max: int | None = None,
     verdict: str | None = None,
     comm_min: int | None = None,
+    exit_kind: str | None = None,
     limit: int = 200,
 ) -> list[Any]:
     base = """
@@ -304,6 +319,10 @@ def _query_rows(
     # 移住者の集まりでしぼる (3=◎のみ / 2=◎と○)。値は整数に限定して埋める
     if comm_min in (1, 2, 3):
         base += f" AND {communities.level_sql()} >= {int(comm_min)}"
+
+    # 出口でしぼる (2026-10-29)。値はホワイトリストの SQL に置き換えるのでユーザー入力は埋めない
+    if exit_kind in EXIT_FILTERS:
+        base += EXIT_FILTERS[exit_kind]
 
     if sort == "community_desc":
         # 移住者の集まりが活発な地域 (◎→○→△→未調査) の順。同じ段階なら新着順。
@@ -505,6 +524,7 @@ def index(
     price_max: str | None = None,
     verdict: str | None = None,
     comm: str | None = None,
+    exit: str | None = None,  # noqa: A002 - URL の項目名
     _=Depends(auth),
 ) -> HTMLResponse:
     _ensure_schema()
@@ -517,6 +537,7 @@ def index(
             price_max=_man_to_yen(price_max),
             verdict=verdict or None,
             comm_min=int(comm) if comm in ("1", "2", "3") else None,
+            exit_kind=exit if exit in EXIT_FILTERS else None,
         )
         counts = _counts(conn)
         prefectures = _prefectures(conn)
@@ -528,7 +549,7 @@ def index(
             "rows": rows, "view": view, "sort": sort, "q": q or "",
             "pref": pref or "", "city": city or "",
             "price_min": price_min or "", "price_max": price_max or "",
-            "verdict": verdict or "", "comm": comm or "",
+            "verdict": verdict or "", "comm": comm or "", "exit": exit or "",
             "verdict_options": [("検討可", "✅検討可"), ("警告", "⚠️警告"),
                                 ("未判定", "AI未判定"), ("見送り", "🚫見送り")],
             "prefectures": prefectures, "cities": cities,

@@ -95,7 +95,7 @@
       ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)"),("noexit","🚪出口なし(確認用)"),("sold","💰売れた(30日)")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
+    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
@@ -124,6 +124,12 @@
       <option value="{{v}}" {% if v == verdict %}selected{% endif %}>{{label}}</option>
     {% endfor %}
   </select>
+  <select name="exit" onchange="this.form.submit()" title="出口でしぼり込む">
+    <option value="">🚪 出口: すべて</option>
+    {% for v, label in [("minpaku","🚪 民泊が見込める"),("rental","🚪 賃貸が見込める"),("resale","🚪 再販が見込める"),("two","🚪 2つ以上見込める"),("check","🚪 要確認（判断できず）"),("pending","🚪 判定待ち")] %}
+    <option value="{{v}}" {% if exit == v %}selected{% endif %}>{{label}}</option>
+    {% endfor %}
+  </select>
   <select name="comm" onchange="this.form.submit()" title="移住者の集まりでしぼり込む">
     <option value="">👥 移住者の集まり: すべて</option>
     <option value="3" {% if comm == '3' %}selected{% endif %}>👥 ◎ 交流が活発な地域だけ</option>
@@ -148,7 +154,7 @@
   </select>
   <input type="text" name="q" placeholder="🔍 住所/タイトル検索" value="{{q}}" autocomplete="off">
   <button type="submit" style="padding:0.4rem 0.9rem;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;">検索</button>
-  {% if q or pref or city or price_min or price_max or verdict or comm %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
+  {% if q or pref or city or price_min or price_max or verdict or comm or exit %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
 </form>
 
 {% if rows %}

@@ -98,3 +98,17 @@ def test_unknown_listed_with_check(conn):
     rows = webapp._query_rows(conn, "all", "new", None)
     assert [r["id"] for r in rows] == [pid]
     assert webapp._exit_badge(rows[0])["check"] is True
+
+
+def test_exit_filters(conn):
+    m = _prop(conn, "m", ("見込める", "厳しい", "見込める"))
+    r = _prop(conn, "r", ("厳しい", "見込める", "不明"))
+    u = _prop(conn, "u", ("不明", "不明", "不明"))
+    p = _prop(conn, "p")
+    q = lambda k: {x["id"] for x in webapp._query_rows(conn, "all", "new", None, exit_kind=k)}  # noqa: E731
+    assert q("minpaku") == {m}
+    assert q("rental") == {r}
+    assert q("resale") == {m}
+    assert q("two") == {m}
+    assert q("check") == {u}
+    assert q("pending") == {p}
