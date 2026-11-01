@@ -322,6 +322,11 @@ MIGRATIONS = [
     "ALTER TABLE resale_ai ADD COLUMN exit_rental TEXT",
     "ALTER TABLE resale_ai ADD COLUMN exit_resale TEXT",
     "ALTER TABLE resale_ai ADD COLUMN exit_reason TEXT",
+    # 上下水道 (2026-11-01): 詳細ページから判定。src/utilities.py
+    "ALTER TABLE properties ADD COLUMN water_supply TEXT",
+    "ALTER TABLE properties ADD COLUMN sewage TEXT",
+    "ALTER TABLE properties ADD COLUMN utilities_note TEXT",
+    "ALTER TABLE properties ADD COLUMN utilities_checked_at TEXT",
 ]
 
 
