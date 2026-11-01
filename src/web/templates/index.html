@@ -95,7 +95,7 @@
       ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)"),("noexit","🚪出口なし(確認用)"),("sold","💰売れた(30日)")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
+    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}&ws={{ws}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
@@ -130,6 +130,12 @@
     <option value="{{v}}" {% if exit == v %}selected{% endif %}>{{label}}</option>
     {% endfor %}
   </select>
+  <select name="ws" onchange="this.form.submit()" title="上下水道でしぼり込む">
+    <option value="">🚰 上下水道: すべて</option>
+    <option value="public" {% if ws == 'public' %}selected{% endif %}>🚰 上水道＋公共下水だけ</option>
+    <option value="septic" {% if ws == 'septic' %}selected{% endif %}>🚰 上水道＋下水か浄化槽（水洗）</option>
+    <option value="unknown" {% if ws == 'unknown' %}selected{% endif %}>🚰 未確認の家</option>
+  </select>
   <select name="comm" onchange="this.form.submit()" title="移住者の集まりでしぼり込む">
     <option value="">👥 移住者の集まり: すべて</option>
     <option value="3" {% if comm == '3' %}selected{% endif %}>👥 ◎ 交流が活発な地域だけ</option>
@@ -154,7 +160,7 @@
   </select>
   <input type="text" name="q" placeholder="🔍 住所/タイトル検索" value="{{q}}" autocomplete="off">
   <button type="submit" style="padding:0.4rem 0.9rem;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;">検索</button>
-  {% if q or pref or city or price_min or price_max or verdict or comm or exit %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
+  {% if q or pref or city or price_min or price_max or verdict or comm or exit or ws %}<a href="?view={{view}}" style="padding:0.4rem;text-decoration:none;color:#888;align-self:center;">×クリア</a>{% endif %}
 </form>
 
 {% if rows %}
@@ -204,6 +210,10 @@
       {% else %}
         <span class="exit-chip wait" title="AIの出口判定がまだです (1日2回、順に判定します)">🚪 出口 判定待ち</span>
       {% endif %}
+    </div>
+    {% set ub = utilities_badge(r) %}
+    <div class="nego-row">
+      <span class="exit-chip {{ '' if ub.good else 'wait' }}" title="{{ ub.note or '詳細ページをまだ見ていません (毎日少しずつ確認します)' }}">🚰 {{ ub.text }}</span>{% if ub.note %}<span style="font-size:0.7rem;color:#777;">{{ ub.note }}</span>{% endif %}
     </div>
     {% set cb = community_badge(r) %}
     {% if cb %}

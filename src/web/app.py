@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from .. import communities, db, enrich, municipalities, negotiation, resale_ai
+from .. import communities, db, enrich, municipalities, negotiation, resale_ai, utilities
 
 app = FastAPI(title="trade dashboard")
 
@@ -167,6 +167,7 @@ def _query_rows(
     verdict: str | None = None,
     comm_min: int | None = None,
     exit_kind: str | None = None,
+    ws: str | None = None,
     limit: int = 200,
 ) -> list[Any]:
     base = """
@@ -273,6 +274,8 @@ def _query_rows(
         base += SKIPPED_EXCLUSION
         # 出口が見込めない物件は一覧に出さない (未判定は残す)
         base += NO_EXIT_EXCLUSION
+        # 詳細ページで汲み取りと分かった家も出さない (2026-11-01)
+        base += utilities.KUMITORI_EXCLUSION
         # 掲載から5年超の長期売れ残りは一覧に出さない (ユーザー指定の除外条件)。
         # listed_at が NULL (未取得) の物件は除外しない = デフォルト通過。
         # ※交渉候補タブでは出す (長く売れ残っている家ほど値引きの余地があるため)
@@ -324,6 +327,10 @@ def _query_rows(
     if exit_kind in EXIT_FILTERS:
         base += EXIT_FILTERS[exit_kind]
 
+    # 上下水道でしぼる (2026-11-01)。値はホワイトリストの SQL に置き換える
+    if ws in utilities.WS_FILTERS:
+        base += utilities.WS_FILTERS[ws]
+
     if sort == "community_desc":
         # 移住者の集まりが活発な地域 (◎→○→△→未調査) の順。同じ段階なら新着順。
         sort_sql = f"{communities.level_sql()} DESC, p.first_seen_at DESC"
@@ -353,6 +360,7 @@ def _counts(conn: Any) -> dict[str, int]:
         " AND (p.resale_ng IS NULL OR p.resale_ng = 0)"
         + SKIPPED_EXCLUSION   # 見送りは一覧に出さない (件数も揃える)
         + NO_EXIT_EXCLUSION   # 出口が見込めない物件も同様
+        + utilities.KUMITORI_EXCLUSION   # 詳細ページで汲み取りと分かった家も同様
     )
     nego_live = live   # 交渉候補タブ: 5年超も出す・300万円以上も出す
     live = live + STALE_EXCLUSION + NORMAL_PRICE  # 掲載5年超・交渉候補は通常の一覧に出さない
@@ -525,6 +533,7 @@ def index(
     verdict: str | None = None,
     comm: str | None = None,
     exit: str | None = None,  # noqa: A002 - URL の項目名
+    ws: str | None = None,
     _=Depends(auth),
 ) -> HTMLResponse:
     _ensure_schema()
@@ -538,6 +547,7 @@ def index(
             verdict=verdict or None,
             comm_min=int(comm) if comm in ("1", "2", "3") else None,
             exit_kind=exit if exit in EXIT_FILTERS else None,
+            ws=ws if ws in utilities.WS_FILTERS else None,
         )
         counts = _counts(conn)
         prefectures = _prefectures(conn)
@@ -549,7 +559,7 @@ def index(
             "rows": rows, "view": view, "sort": sort, "q": q or "",
             "pref": pref or "", "city": city or "",
             "price_min": price_min or "", "price_max": price_max or "",
-            "verdict": verdict or "", "comm": comm or "", "exit": exit or "",
+            "verdict": verdict or "", "comm": comm or "", "exit": exit or "", "ws": ws or "",
             "verdict_options": [("検討可", "✅検討可"), ("警告", "⚠️警告"),
                                 ("未判定", "AI未判定"), ("見送り", "🚫見送り")],
             "prefectures": prefectures, "cities": cities,
@@ -650,6 +660,7 @@ TEMPLATES.env.globals["fmt_price"] = _fmt_price_short
 TEMPLATES.env.globals["warning_chips"] = _warning_chips
 TEMPLATES.env.globals["nego_marks"] = negotiation.marks
 TEMPLATES.env.globals["community_badge"] = communities.badge
+TEMPLATES.env.globals["utilities_badge"] = utilities.badge
 TEMPLATES.env.globals["exit_badge"] = _exit_badge
 
 
