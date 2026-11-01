@@ -109,6 +109,13 @@ def scrape(source: str | None, group: str) -> None:
         f"sold: checked={sold_stats['checked']} marked={sold_stats['marked']}"
         f" (収集成功 {len(succeeded)}/{len(sources)} 収集元)"
     )
+    # Mac の毎日の収集 (アットホーム系) では、続けて上下水道も調べる。
+    # アットホームは海外から開けないため、GitHub 側の `utilities --group other` では扱えない。
+    if group == "athome" and not source and succeeded:
+        from . import utilities as ut
+        with db.connect() as conn:
+            st = ut.check_missing(conn, limit=300, sources=_athome_sources())
+        click.echo(f"上下水道: 判定={st['checked']} 開けず={st['failed']}")
 
 
 @cli.command()
@@ -213,6 +220,25 @@ def enrich(limit: int) -> None:
         f"掲載日あり={st['found']} (家いちば{st['ieichiba']} / 0円{st['zero']} / "
         f"市サイト{st['city']}) 楽園補完={st['rakuen']} "
         f"日付なし={st['no_date']} 失敗={st['failed']}"
+    )
+
+
+@cli.command()
+@click.option("--limit", default=200, type=int, help="一度に見に行く最大件数")
+@click.option("--group", type=click.Choice(["all", "athome", "other"]), default="all",
+              show_default=True, help="athome=アットホーム系だけ(Mac用) / other=それ以外(GitHub用)")
+def utilities(limit: int, group: str) -> None:
+    """詳細ページから上下水道 (水道・下水・トイレ) を判定する。まだの物件だけ1回見に行く。"""
+    from . import utilities as ut
+    db.init_db()
+    athome = _athome_sources()
+    with db.connect() as conn:
+        st = ut.check_missing(conn, limit=limit,
+                              sources=athome if group == "athome" else None,
+                              exclude=athome if group == "other" else None)
+    click.echo(
+        f"対象={st['target']} 判定={st['checked']} 開けず(次回再挑戦)={st['failed']} "
+        f"水道+下水か浄化槽={st['good']} 汲み取り={st['kumitori']}"
     )
 
 

@@ -21,7 +21,7 @@ jobs:
     # 46 source (詳細fetch型 + akiya-athome 多数 + zero.estate API 20ページ) で
     # 逐次実行 ~15分超。public repo は Actions 無制限なので余裕を持って 30 分に。
     # (ソース追加で伸び続けるため、将来は並列化 or ソース分割を検討 — Next 参照)
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
 
@@ -57,3 +57,11 @@ jobs:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: python -m src.cli enrich --limit 250
+
+      # 詳細ページから上下水道 (水道・下水・トイレ) を判定する。まだの物件だけ1回見に行く。
+      # アットホーム系は Mac の毎日の収集のあとに調べる (scrape --group athome)。
+      - name: Run utilities (上下水道の判定)
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python -m src.cli utilities --group other --limit 300
