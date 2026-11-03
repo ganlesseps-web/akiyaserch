@@ -104,6 +104,14 @@ def passes(
                 reason = None
             return False, f"dilapidated: {reason or 'flagged'}"
 
+    # 汲み取り式と分かった家は通知しない (ダッシュボード一覧と揃える。2026-11-03 ユーザー指摘)
+    try:
+        sewage = row["sewage"]
+    except (KeyError, IndexError, ValueError):
+        sewage = None
+    if sewage == "kumitori":
+        return False, "kumitori"
+
     # 「修繕が必要」と明記された物件を除外 (ダッシュボード一覧と条件を揃える)
     if cfg.exclude_needs_repair:
         try:

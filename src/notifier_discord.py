@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from . import db, filter as flt, municipalities
+from . import db, filter as flt, municipalities, utilities
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,17 @@ def notify(
             passed.append(row)
         else:
             logger.debug("skip %s: %s", row["url"], reason)
+
+    # 上下水道をまだ調べていない家は、送る前にその場で詳細ページを見て判定する
+    # (収集→判定より先に通知が走ると、汲み取り式の家が通知されてしまうため。2026-11-03)
+    unchecked = [r["id"] for r in passed if not _safe_get(r, "utilities_checked_at")]
+    if unchecked and not dry_run:
+        utilities.check_missing(conn, ids=unchecked, limit=len(unchecked))
+        marks = ", ".join("?" * len(unchecked))
+        kumitori = {r[0] for r in conn.execute(
+            f"SELECT id FROM properties WHERE id IN ({marks}) AND sewage = 'kumitori'", unchecked
+        ).fetchall()}
+        passed = [r for r in passed if r["id"] not in kumitori]
 
     if not passed:
         return {"scanned": len(rows), "passed": 0, "sent": 0}
@@ -136,7 +147,7 @@ def _safe_get(row: Any, key: str, default: Any = None) -> Any:
     """sqlite3.Row / _LibsqlRow どちらでも安全に取得 (キー欠如時 default)。"""
     try:
         return row[key]
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, ValueError):  # 本番DBの行は無い列で ValueError
         return default
 
 

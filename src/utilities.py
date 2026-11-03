@@ -174,7 +174,7 @@ def badge(row) -> dict | None:
 
 # --- 詳細ページを見に行って判定する (trade utilities) ---------------------------
 def check_missing(conn, *, limit: int = 200, sources: set[str] | None = None,
-                  exclude: set[str] | None = None) -> dict[str, int]:
+                  exclude: set[str] | None = None, ids: list[int] | None = None) -> dict[str, int]:
     """まだ上下水道を調べていない物件の詳細ページを1回だけ見に行く。
 
     ページが開けなかった物件 (アットホームのメンテナンス中など) は「未確認」のまま残し、
@@ -198,6 +198,11 @@ def check_missing(conn, *, limit: int = 200, sources: set[str] | None = None,
     if exclude:
         sql += f" AND p.source NOT IN ({', '.join('?' * len(exclude))})"
         params += sorted(exclude)
+    if ids is not None:
+        if not ids:
+            return {"target": 0, "checked": 0, "failed": 0, "good": 0, "kumitori": 0}
+        sql += f" AND p.id IN ({', '.join('?' * len(ids))})"
+        params += list(ids)
     sql += " ORDER BY p.first_seen_at DESC LIMIT ?"
     params.append(limit)
     rows = conn.execute(sql, params).fetchall()

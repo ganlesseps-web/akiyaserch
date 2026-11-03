@@ -162,3 +162,31 @@ def test_ai_ok_verdict_notified(conn, cfg):
         " VALUES (?,?,?,?,?)", (row["id"], "検討可", "h", "m", db.now_iso()))
     ok, _ = flt.passes(conn, row, strict)
     assert ok
+
+
+def test_kumitori_is_not_notified(conn, cfg):
+    """汲み取り式と分かった家は通知しない (2026-11-03 ユーザー指摘)。"""
+    assert not flt.passes(conn, _insert(conn, listing_id="k", sewage="kumitori"), cfg)[0]
+    assert flt.passes(conn, _insert(conn, listing_id="s", sewage="septic"), cfg)[0]
+
+
+def test_notify_checks_utilities_before_sending(conn, cfg, monkeypatch):
+    """上下水道を調べていない家は、送る前に判定し、汲み取りなら送らない。"""
+    from src import notifier_discord as nd, utilities
+    keep = _insert(conn, listing_id="a", title="水洗の家")
+    drop = _insert(conn, listing_id="b", title="汲み取りの家")
+    seen = []
+
+    def fake_check(c, *, ids, limit, **_):
+        seen.extend(ids)
+        c.execute("UPDATE properties SET sewage='public', utilities_checked_at='x' WHERE id=?", (keep["id"],))
+        c.execute("UPDATE properties SET sewage='kumitori', utilities_checked_at='x' WHERE id=?", (drop["id"],))
+    monkeypatch.setattr(utilities, "check_missing", fake_check)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://example.invalid")
+    posted = []
+    monkeypatch.setattr(nd, "_post_embed", lambda _w, row: posted.append(row["title"]))
+    monkeypatch.setattr(nd.time, "sleep", lambda _s: None)
+
+    stats = nd.notify(conn, cfg)
+    assert sorted(seen) == sorted([keep["id"], drop["id"]])
+    assert posted == ["水洗の家"] and stats["sent"] == 1
