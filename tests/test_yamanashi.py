@@ -74,3 +74,34 @@ def test_koshu_fetch_filters(monkeypatch):
 def test_registry_has_yamanashi():
     for k in ("nirasaki_akiyabank", "minamialps_akiyabank", "koshu_akiyabank"):
         assert k in REGISTRY
+
+
+# ---- 身延町 (一覧の result_box) / 都留市 (記事の見出し) 2026-11-06 ----
+
+def test_minobu_parse_list():
+    from src.scrapers.minobu_akiyabank import parse_list
+    html = """<div id="results">
+    <div class="result_box"><div class="result_img"><div class="result_img_status">交渉中</div>
+    <div class="result_img_house"><a href="/akiya/ijyu/10369.html"><img src="/uploaded/life/1.jpg"/></a></div></div>
+    <div class="result_txt"><a class="result_title" href="/akiya/ijyu/10369.html">New!（空き家）身延町下山</a>
+    <dl class="result_data"><div class="result_data_item data_price"><dt>値段</dt><dd>（売買）3,000,000円</dd></div>
+    <div class="result_data_item data_place"><dt>所在地</dt><dd></dd>身延町下山</div></dl></div></div></div>"""
+    [r] = parse_list(html)
+    assert (r["id"], r["price"], r["place"], r["status"]) == ("10369", "3,000,000円", "身延町下山", "交渉中")
+    assert r["img"] == "https://www.town.minobu.lg.jp/uploaded/life/1.jpg"
+
+
+def test_tsuru_parse_list_sale_only():
+    from src.scrapers.tsuru_akiyabank import parse_list
+    html = """
+    <a href="https://kurashi.osusowake.life/sumai/3831/">住まいについて 売家 物件情報 No.167 大幡の物件【売却：100万円】</a>
+    <a href="https://kurashi.osusowake.life/sumai/3775/">No.166 小野の物件【賃貸：1万円】</a>
+    <a href="https://kurashi.osusowake.life/sumai/3751/">【空き家内見に便利】1時間330円〜の格安カーシェア</a>
+    <a href="https://kurashi.osusowake.life/sumai/2929/">NO149 境の物件 売却【850万】</a>"""
+    got = {r["no"]: (r["area"], r["man"]) for r in parse_list(html)}
+    assert got == {"167": ("大幡", "100"), "149": ("境", "850")}
+
+
+def test_registry_has_new_yamanashi():
+    for k in ("minobu_akiyabank", "tsuru_akiyabank"):
+        assert k in REGISTRY
