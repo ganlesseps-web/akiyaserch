@@ -56,6 +56,9 @@ from src.web import app as webapp
     ("水道：公営上水道 風呂：電気 トイレ：洋式・下水・水洗 駐車場：なし", "public", "public"),
     # 温水洗浄便座は水洗の根拠にしない
     ("水回りは（トイレ温水洗浄便座付き）", "unknown", "unknown"),
+    # SUUMO: 「本下水」は公共下水
+    ("設備：公営水道、本下水、都市ガス、駐車場：無", "public", "public"),
+    ("設備：公営水道、個別LPG、駐車場：無", "public", "unknown"),
 ])
 def test_judge(text, water, sewage):
     u = judge(text)
