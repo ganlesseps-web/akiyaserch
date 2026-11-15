@@ -103,5 +103,31 @@ def test_tsuru_parse_list_sale_only():
 
 
 def test_registry_has_new_yamanashi():
-    for k in ("minobu_akiyabank", "tsuru_akiyabank"):
+    for k in ("minobu_akiyabank", "tsuru_akiyabank", "hokuto_akiyabank"):
         assert k in REGISTRY
+
+
+def test_hokuto_parse_list():
+    from src.scrapers.hokuto_akiyabank import parse_list
+    html = """
+    <section class="bukken_list">
+      <article><a href="/teijyu_ijyu/bank/bukkenn/35830.html">
+        <figure><img src="/fs/5/0/6/4/7/4/_/a.jpg"></figure>
+        <h3>NEW!!空き家バンク登録物件【売245 】</h3>
+        <div class="bukken_price"><span class="icon_kakaku">価格</span>700万円</div>
+        <div class="bukken_place"><span class="icon_jyusyo">場所</span>高根町箕輪新町</div>
+        <div class="bukken_cat"><span class="teijyu_ijyu-bank-genre-reform">要リフォーム物件</span></div>
+      </a></article>
+      <article><a href="/teijyu_ijyu/bank/bukkenn/33000.html">
+        <h3>空き家バンク登録物件【売230】</h3>
+        <div class="bukken_price"><span class="icon_kakaku">価格</span>250万円</div>
+        <div class="bukken_place"><span class="icon_jyusyo">場所</span>須玉町江草\u3000※土砂災害警戒区域（イエローゾーン）</div>
+      </a></article>
+      <article><a href="/teijyu_ijyu/bank/bukkenn/1.html"><h3>移住相談会のお知らせ</h3></a></article>
+    </section>"""
+    rows = {r["no"]: r for r in parse_list(html)}
+    assert set(rows) == {"245", "230"}
+    assert rows["245"]["price"] == "700万円" and rows["245"]["area"] == "高根町箕輪新町" and rows["245"]["reform"]
+    assert rows["245"]["url"] == "https://www.city.hokuto.yamanashi.jp/teijyu_ijyu/bank/bukkenn/35830.html"
+    assert rows["245"]["img"].startswith("https://www.city.hokuto.yamanashi.jp/fs/")
+    assert rows["230"]["area"] == "須玉町江草" and rows["230"]["note"].startswith("※土砂災害")

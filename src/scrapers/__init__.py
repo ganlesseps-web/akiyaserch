@@ -62,6 +62,7 @@ from .koshu_akiyabank import KoshuAkiyabankScraper
 from .minobu_akiyabank import MinobuAkiyabankScraper
 from .suumo import SuumoScraper
 from .tsuru_akiyabank import TsuruAkiyabankScraper
+from .hokuto_akiyabank import HokutoAkiyabankScraper
 from .rakuen_shinshu import (
     MatsumotoRakuenScraper,
     ShiojiriRakuenScraper,
@@ -140,6 +141,7 @@ REGISTRY: dict[str, type[Scraper]] = {
     "minobu_akiyabank": MinobuAkiyabankScraper,
     "suumo": SuumoScraper,
     "tsuru_akiyabank": TsuruAkiyabankScraper,
+    "hokuto_akiyabank": HokutoAkiyabankScraper,
     "matsumoto_rakuen": MatsumotoRakuenScraper,
     "shiojiri_rakuen": ShiojiriRakuenScraper,
     "ina_rakuen": InaRakuenScraper,
