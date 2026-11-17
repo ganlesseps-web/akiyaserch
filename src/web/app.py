@@ -123,7 +123,7 @@ EXIT_FILTERS = {
 
 # 交渉候補 (300万〜400万円) は「🤝交渉候補」タブ専用。通常の一覧には出さない。
 # 価格不明 (NULL) は従来通り通常の一覧に出す。
-NORMAL_PRICE = f" AND (p.price IS NULL OR p.price < {negotiation.NORMAL_PRICE_MAX})"
+NORMAL_PRICE = " AND " + negotiation.normal_sql()   # 山梨県は400万円まで (2026-11-17)
 
 # 交渉候補タブの並び: 印の多い順 (掲載が長い・値下げ歴) → 安い順
 _NEGO_RANK = (

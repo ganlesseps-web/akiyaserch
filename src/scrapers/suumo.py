@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 BASE = "https://suumo.jp"
 MAX_PAGES = 5
-PRICE_STOP_MAN = 300   # これを超える家が出たら次のページは見ない
+PRICE_STOP_MAN = {"yamanashi": 400, "nagasaki": 300}   # これを超える家が出たら次のページは見ない (山梨は2026-11-17に400万円へ)
 
 # (県のローマ字, 市区郡のローマ字)
 AREAS: list[tuple[str, str]] = [
@@ -101,7 +101,7 @@ class SuumoScraper:
                     if r["id"] in seen:
                         continue
                     man = _man(r["price"])
-                    if man is None or man > PRICE_STOP_MAN:
+                    if man is None or man > PRICE_STOP_MAN[pref]:
                         continue
                     seen.add(r["id"])
                     body = " | ".join(filter(None, [
@@ -125,6 +125,6 @@ class SuumoScraper:
                     )
                 # 広告枠を除いた最後の家が上限を超えていれば、以降のページはもっと高い
                 last = _man(rows[-1]["price"])
-                if last is not None and last > PRICE_STOP_MAN:
+                if last is not None and last > PRICE_STOP_MAN[pref]:
                     break
         logger.info("%s: %d listings", self.source, len(seen))

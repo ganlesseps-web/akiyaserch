@@ -63,6 +63,9 @@ class FilterConfig:
         )
 
 
+from . import negotiation as _neg
+
+
 def passes(
     conn: sqlite3.Connection,
     row: sqlite3.Row,
@@ -72,7 +75,7 @@ def passes(
 ) -> tuple[bool, str]:
     """Returns (pass, reason). reason は通すor落とす理由（ログ用）。"""
     price = row["price"]
-    if price is not None and price > cfg.price_max:
+    if price is not None and price > cfg.price_max and not _neg.normal_ok(price, row["prefecture"]):
         return False, f"price {price} > {cfg.price_max}"
     if price is not None and cfg.price_min > 0 and price < cfg.price_min:
         return False, f"price {price} < min {cfg.price_min}"

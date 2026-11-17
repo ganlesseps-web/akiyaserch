@@ -23,6 +23,27 @@ import yaml
 NORMAL_PRICE_MAX = 3_000_000  # 通常の一覧の上限 (purge.PRICE_CUTOFF_YEN と同じ)
 BAND_MIN = 2_000_000          # 交渉候補タブに出す下限 (これ以下は通常の一覧で十分)
 
+# 県ごとの通常の一覧の上限 (この値「以下」を通常の一覧・通知に出す)。
+# 2026-11-17 ユーザー「山梨の物件は400万円まで広げて」(移住先の候補のため)。
+PREF_PRICE_MAX: dict[str, int] = {"山梨県": 4_000_000}
+
+
+def normal_ok(price: int | None, prefecture: str | None) -> bool:
+    """通常の一覧・通知に出してよい値段か (価格不明は出す)。"""
+    if price is None or price < NORMAL_PRICE_MAX:
+        return True
+    cap = PREF_PRICE_MAX.get(prefecture or "")
+    return cap is not None and price <= cap
+
+
+def normal_sql() -> str:
+    """normal_ok の SQL 版 (p.price / p.prefecture)。"""
+    extra = "".join(
+        f" OR (p.prefecture = {_q(pref)} AND p.price <= {int(cap)})"
+        for pref, cap in PREF_PRICE_MAX.items()
+    )
+    return f"(p.price IS NULL OR p.price < {NORMAL_PRICE_MAX}{extra})"
+
 
 @dataclass(frozen=True)
 class Config:

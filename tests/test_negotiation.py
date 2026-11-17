@@ -173,3 +173,14 @@ def test_kyotango_blank_date_is_none():
     from src.enrich import parse_listed_at
     html = "<div><p>公開日：&nbsp; <a href='x'>2020/01/01 のお知らせ</a></p></div>"
     assert parse_listed_at(html) is None
+
+
+def test_yamanashi_normal_cap_400man():
+    """2026-11-17: 山梨県だけ通常の一覧を400万円 (以下) まで広げる。"""
+    assert negotiation.normal_ok(2_990_000, "長崎県")
+    assert not negotiation.normal_ok(3_000_000, "長崎県")
+    assert negotiation.normal_ok(3_800_000, "山梨県")
+    assert negotiation.normal_ok(4_000_000, "山梨県")
+    assert not negotiation.normal_ok(4_100_000, "山梨県")
+    assert negotiation.normal_ok(None, None)
+    assert "山梨県" in negotiation.normal_sql()

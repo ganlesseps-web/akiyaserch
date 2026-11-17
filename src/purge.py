@@ -84,6 +84,7 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
     if listing.property_type == "land":
         return "土地"
     if (listing.price is not None and listing.price >= price_cutoff
+            and not negotiation.normal_ok(listing.price, listing.prefecture)
             and not negotiation.keep_pricey(listing.price, listing.city, listing.address)):
         return "300万円以上"
     district = district_skip_reason(listing.city, listing.address)
@@ -130,6 +131,7 @@ def text_rule_ids(conn: Any, *, keep_rated: bool = True) -> dict[str, list[int]]
 def _pricey_sql() -> str:
     """「300万円以上で消す」条件 (パラメータは price_cutoff 1個)。交渉候補は除く。"""
     return (f"(p.price IS NOT NULL AND p.price >= ?"
+            f" AND NOT {negotiation.normal_sql()}"
             f" AND NOT {negotiation.keep_pricey_sql()})")
 
 
