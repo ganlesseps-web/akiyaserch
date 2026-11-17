@@ -129,6 +129,7 @@ def scrape(source: str | None, group: str) -> None:
 def layout_cmd(limit: int, group: str) -> None:
     """間取りが分からない物件の詳細ページを1回だけ見て、部屋数を記録する。"""
     from . import layout as lay
+    db.init_db()  # 間取りの列が本番に無ければ足す
     ath = _athome_sources()
     with db.connect() as conn:
         st = lay.check_missing(
