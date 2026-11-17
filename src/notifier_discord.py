@@ -192,7 +192,9 @@ def _post_embed(webhook: str, row: sqlite3.Row) -> None:
     description = "\n\n".join(description_parts)
 
     fields = [
-        {"name": "💰 価格", "value": _format_price(row["price"]), "inline": True},
+        ({"name": "🔑 家賃 (月・管理費込み)", "value": _format_price(row["price"]), "inline": True}
+         if _safe_get(row, "deal_type") == "rent" else
+         {"name": "💰 価格", "value": _format_price(row["price"]), "inline": True}),
         {"name": "📍 所在地", "value": location, "inline": True},
     ]
     if row["area_land"]:

@@ -124,6 +124,7 @@ EXIT_FILTERS = {
 # 交渉候補 (300万〜400万円) は「🤝交渉候補」タブ専用。通常の一覧には出さない。
 # 価格不明 (NULL) は従来通り通常の一覧に出す。
 NORMAL_PRICE = " AND " + negotiation.normal_sql()   # 山梨県は400万円まで (2026-11-17)
+from .. import rental  # 賃貸 (2026-11-17)
 
 # 交渉候補タブの並び: 印の多い順 (掲載が長い・値下げ歴) → 安い順
 _NEGO_RANK = (
@@ -251,6 +252,11 @@ def _query_rows(
             f" AND EXISTS (SELECT 1 FROM resale_ai r WHERE r.property_id = p.id AND {_NO_EXIT})"
             " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
         )
+    elif view == "rent":
+        # 「🔑賃貸」: 山梨の賃貸一戸建て (家賃＋管理費 7.5万円以下・3部屋以上)。
+        # 買う家向けの AI 判定・値段の条件は使わない。
+        base += rental.ONLY_RENT_SQL + layout.EXCLUSION_SQL
+        base += " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)"
     elif view == "free":
         # 「0円物件」(本体価格が無料) のみ。settlement_offer のキーワード判定は
         # 有料物件の「土地だけ無償」等を誤検出するため、価格 0 円で確実に絞る。
@@ -264,7 +270,8 @@ def _query_rows(
     # 「住める空き家だけ」: 発見系ビューでは“住めない物件”(dilapidated) と
     # “修繕が必要と明記された物件”(needs_repair) を隠す。お気に入り/通知済み/
     # 評価済み/却下 はユーザーが明示的に作った一覧なのでそのまま全件表示する。
-    if view not in ("favorites", "notified", "dismissed", "rated", "skipped", "sold", "noexit"):
+    if view not in ("favorites", "notified", "dismissed", "rated", "skipped", "sold", "noexit", "rent"):
+        base += rental.NOT_RENT_SQL   # 賃貸は「🔑賃貸」タブだけに出す
         base += " AND (p.dilapidated IS NULL OR p.dilapidated = 0)"
         base += " AND (p.needs_repair IS NULL OR p.needs_repair = 0)"
         # 再販ハード除外 (再建築不可/借地/共有持分/井戸のみ/浸水3m超 等)
@@ -286,7 +293,7 @@ def _query_rows(
             base += STALE_EXCLUSION
             base += NORMAL_PRICE
     elif view in ("skipped", "noexit"):
-        base += NORMAL_PRICE
+        base += NORMAL_PRICE + rental.NOT_RENT_SQL
 
     if q:
         base += " AND (p.title LIKE ? OR p.address LIKE ? OR p.city LIKE ?)"
@@ -370,6 +377,8 @@ def _counts(conn: Any) -> dict[str, int]:
         + utilities.KUMITORI_EXCLUSION   # 詳細ページで汲み取りと分かった家も同様
         + layout.EXCLUSION_SQL           # 2部屋以下と分かっている家も同様
     )
+    rent_live = live
+    live = live + rental.NOT_RENT_SQL    # 賃貸は「🔑賃貸」タブだけで数える
     nego_live = live   # 交渉候補タブ: 5年超も出す・300万円以上も出す
     live = live + STALE_EXCLUSION + NORMAL_PRICE  # 掲載5年超・交渉候補は通常の一覧に出さない
 
@@ -411,6 +420,7 @@ def _counts(conn: Any) -> dict[str, int]:
         "rated": conn.execute("SELECT COUNT(*) FROM ratings").fetchone()[0],
         "dismissed": conn.execute("SELECT COUNT(*) FROM dismissed").fetchone()[0],
         "free": count(" AND p.price = 0" + live),
+        "rent": count(rental.ONLY_RENT_SQL + " AND NOT EXISTS (SELECT 1 FROM dismissed WHERE property_id = p.id)" + layout.EXCLUSION_SQL),
         "house": count(" AND p.property_type = 'house'" + live),
         "land": count(" AND p.property_type = 'land'" + live),
         "apartment": count(" AND p.property_type = 'apartment'" + live),

@@ -92,13 +92,16 @@
 
 <nav>
   {% for v, label in [
-      ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("unread","未読"),("free","🆓0円物件"),
+      ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("rent","🔑賃貸"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)"),("noexit","🚪出口なし(確認用)"),("sold","💰売れた(30日)")] %}
     <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}&ws={{ws}}&lay={{lay}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
+{% if view == 'rent' %}
+<p class="nego-note">🔑 賃貸：山梨県の賃貸一戸建て（SUUMO）で、家賃＋管理費が月7.5万円以下・3部屋以上（3K/3DK/3LDK以上）の家です。間取りが書かれていない家も念のため出しています。</p>
+{% endif %}
 {% if view == 'nego' %}
 <p class="nego-note">🤝 交渉候補：調査した48市町村で 200万〜400万円の家です。値引き交渉で200万円前後まで下がるかもしれない家として載せています。「📅 掲載が長い」「🔻 値下げ歴あり」「💬 価格相談の記載」の印が多い順に並べています。掲載5年以上の家もここには出します。</p>
 {% endif %}
@@ -187,7 +190,8 @@
     <a class="title" href="{{ r['url'] }}" target="_blank" rel="noopener">{{ r['title'] }}</a>
     <div class="meta">
       <span class="price">
-        {%- if r['price'] == 0 -%}0円
+        {%- if r['deal_type'] == 'rent' and r['price'] -%}家賃 月{{ "{:,}".format(r['price']) }}円
+        {%- elif r['price'] == 0 -%}0円
         {%- elif r['price'] -%}{{ "{:,}".format(r['price']) }}円
         {%- else -%}価格不明{%- endif -%}
       </span>
