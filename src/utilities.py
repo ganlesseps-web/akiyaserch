@@ -221,6 +221,14 @@ def check_missing(conn, *, limit: int = 200, sources: set[str] | None = None,
                 stats["failed"] += 1
                 continue
             u = judge_listing(r["title"], r["body"], resp.content)
+            # 同じページから間取りも読む (二度開かないため)
+            from . import layout
+            got = layout.parse(page_text(resp.content))
+            conn.execute(
+                "UPDATE properties SET layout = COALESCE(layout, ?),"
+                " layout_rooms = COALESCE(layout_rooms, ?), layout_checked_at = ? WHERE id = ?",
+                (got[0] if got else None, got[1] if got else None, db.now_iso(), r["id"]),
+            )
             conn.execute(
                 "UPDATE properties SET water_supply = ?, sewage = ?, utilities_note = ?,"
                 " utilities_checked_at = ? WHERE id = ?",

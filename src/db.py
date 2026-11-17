@@ -327,6 +327,10 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN sewage TEXT",
     "ALTER TABLE properties ADD COLUMN utilities_note TEXT",
     "ALTER TABLE properties ADD COLUMN utilities_checked_at TEXT",
+    # 間取り (2026-11-17): 文章 or 詳細ページから。src/layout.py
+    "ALTER TABLE properties ADD COLUMN layout TEXT",
+    "ALTER TABLE properties ADD COLUMN layout_rooms INTEGER",
+    "ALTER TABLE properties ADD COLUMN layout_checked_at TEXT",
 ]
 
 
@@ -347,6 +351,14 @@ def _run_migrations(conn: Any) -> None:
 # --------- domain operations (work with both backends) ---------
 
 def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
+    """物件を保存し、題名・本文に間取りが書いてあれば一緒に保存する。"""
+    pid, is_new = _upsert_listing(conn, listing)
+    from . import layout
+    layout.fill_from_text(conn, pid, listing.title, listing.body)
+    return pid, is_new
+
+
+def _upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
     """Insert or update. Returns (property_id, is_new).
 
     既存物件で価格が下がっていた場合は price_drops に1行記録する

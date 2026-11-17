@@ -65,3 +65,10 @@ jobs:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: python -m src.cli utilities --group other --limit 300
+
+      # 詳細ページから間取り (部屋数) を読む (2026-11-17)。2部屋以下の家は一覧・通知に出さない。
+      - name: Run layout (間取りの確認)
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python -m src.cli layout --group other --limit 300

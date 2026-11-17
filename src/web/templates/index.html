@@ -95,7 +95,7 @@
       ("all","すべて"),("ready","✨即入居OK"),("pricedown","🔻値下げ"),("nego","🤝交渉候補"),("unread","未読"),("free","🆓0円物件"),
       ("favorites","★お気に入り"),("notified","通知済み"),("rated","評価済み"),("dismissed","却下"),
       ("house","🏠一軒家のみ"),("apartment","🏢マンション"),("skipped","🚫見送り(確認用)"),("noexit","🚪出口なし(確認用)"),("sold","💰売れた(30日)")] %}
-    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}&ws={{ws}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
+    <a href="?view={{v}}&sort={{sort}}&q={{q|urlencode}}&pref={{pref|urlencode}}&city={{city|urlencode}}&price_min={{price_min}}&price_max={{price_max}}&verdict={{verdict|urlencode}}&comm={{comm}}&exit={{exit}}&ws={{ws}}&lay={{lay}}" class="{{ 'active' if view == v else '' }}">{{label}} ({{counts.get(v, 0)}})</a>
   {% endfor %}
 </nav>
 
@@ -135,6 +135,11 @@
     <option value="public" {% if ws == 'public' %}selected{% endif %}>🚰 上水道＋公共下水だけ</option>
     <option value="septic" {% if ws == 'septic' %}selected{% endif %}>🚰 上水道＋下水か浄化槽（水洗）</option>
     <option value="unknown" {% if ws == 'unknown' %}selected{% endif %}>🚰 未確認の家</option>
+  </select>
+  <select name="lay" onchange="this.form.submit()" title="間取りでしぼり込む (2部屋以下の家はもともと出していません)">
+    <option value="">🛏 間取り: すべて (3部屋以上＋未確認)</option>
+    <option value="known" {% if lay == 'known' %}selected{% endif %}>🛏 3部屋以上と分かっている家だけ</option>
+    <option value="unknown" {% if lay == 'unknown' %}selected{% endif %}>🛏 間取りが未確認の家</option>
   </select>
   <select name="comm" onchange="this.form.submit()" title="移住者の集まりでしぼり込む">
     <option value="">👥 移住者の集まり: すべて</option>
@@ -215,6 +220,10 @@
     <div class="nego-row">
       <span class="exit-chip {{ '' if ub.good else 'wait' }}" title="{{ ub.note or '詳細ページをまだ見ていません (毎日少しずつ確認します)' }}">🚰 {{ ub.text }}</span>{% if ub.note %}<span style="font-size:0.7rem;color:#777;">{{ ub.note }}</span>{% endif %}
     </div>
+    {% set lb = layout_badge(r) %}
+    {% if lb %}
+    <div class="nego-row"><span class="exit-chip {{ '' if r['layout_rooms'] else 'wait' }}" title="{{ '詳細ページをまだ見ていないか、間取りの記載がありません' if not r['layout_rooms'] else '' }}">🛏 {{ lb }}</span></div>
+    {% endif %}
     {% set cb = community_badge(r) %}
     {% if cb %}
       <div class="nego-row"><span class="comm-badge comm-{{cb.level}}" title="{{cb.note}}">👥 {{cb.mark}} {{cb.label}}</span><span style="font-size:0.7rem;color:#777;">{{cb.note}}</span></div>

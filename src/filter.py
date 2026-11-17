@@ -80,6 +80,15 @@ def passes(
     if price is not None and cfg.price_min > 0 and price < cfg.price_min:
         return False, f"price {price} < min {cfg.price_min}"
 
+    # 間取り: 2部屋以下と分かっている家は通知しない (2026-11-17 ユーザー「3LDK以上のみ」)
+    from . import layout as _layout
+    try:
+        rooms = row["layout_rooms"]
+    except (KeyError, IndexError, ValueError):
+        rooms = None
+    if not _layout.enough(rooms):
+        return False, f"layout: {rooms}部屋 < {_layout.MIN_ROOMS}"
+
     body = (row["title"] or "") + " " + (row["body"] or "")
     for ng in cfg.ng_keywords:
         if ng in body:

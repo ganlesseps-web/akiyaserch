@@ -116,6 +116,28 @@ def scrape(source: str | None, group: str) -> None:
         with db.connect() as conn:
             st = ut.check_missing(conn, limit=300, sources=_athome_sources())
         click.echo(f"上下水道: 判定={st['checked']} 開けず={st['failed']}")
+        from . import layout as lay
+        with db.connect() as conn:
+            st = lay.check_missing(conn, limit=300, sources=_athome_sources())
+        click.echo(f"間取り: 分かった={st['found']} 記載なし={st['unknown']} 開けず={st['failed']}")
+
+
+@cli.command("layout")
+@click.option("--limit", default=300, show_default=True, help="1回に見る詳細ページの数")
+@click.option("--group", type=click.Choice(["athome", "other", "all"]), default="all",
+              show_default=True, help="athome=アットホーム系だけ / other=それ以外")
+def layout_cmd(limit: int, group: str) -> None:
+    """間取りが分からない物件の詳細ページを1回だけ見て、部屋数を記録する。"""
+    from . import layout as lay
+    ath = _athome_sources()
+    with db.connect() as conn:
+        st = lay.check_missing(
+            conn, limit=limit,
+            sources=ath if group == "athome" else None,
+            exclude=ath if group == "other" else None,
+        )
+    click.echo(f"間取り: 対象={st['target']} 分かった={st['found']}"
+               f" 記載なし={st['unknown']} 開けず={st['failed']}")
 
 
 @cli.command()
