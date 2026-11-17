@@ -34,6 +34,8 @@ class RawListing:
     property_type_hint: str | None = None
     """ソース側が判定したタイプ (例: 物件分類="土地" → 'land')。
     normalize はこのヒントを優先し、None ならキーワード分類にフォールバック。"""
+    deal_type: str | None = None
+    """'rent' = 賃貸 (price は月々の家賃＋管理費)。None = 売買。2026-11-17"""
 
 
 class Scraper(Protocol):

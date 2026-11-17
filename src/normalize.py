@@ -80,6 +80,7 @@ def normalize(raw: RawListing) -> Listing:
         resale_warnings="|".join(warnings) if warnings else None,
         settlement_offer=1 if has_settlement else 0,
         settlement_offer_reason=settlement_reason or None,
+        deal_type=raw.deal_type,
     )
 
 

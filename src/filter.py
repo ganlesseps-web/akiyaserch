@@ -75,6 +75,9 @@ def passes(
 ) -> tuple[bool, str]:
     """Returns (pass, reason). reason は通すor落とす理由（ログ用）。"""
     price = row["price"]
+    from . import rental as _rental
+    if _rental.is_rent(row):
+        return _passes_rent(row, cfg)
     if price is not None and price > cfg.price_max and not _neg.normal_ok(price, row["prefecture"]):
         return False, f"price {price} > {cfg.price_max}"
     if price is not None and cfg.price_min > 0 and price < cfg.price_min:
@@ -206,6 +209,31 @@ def passes(
             return False, f"ai score {score_row['score']} < {cfg.min_ai_score}"
 
     return True, "ok"
+
+
+def _passes_rent(row: "sqlite3.Row", cfg: FilterConfig) -> tuple[bool, str]:
+    """賃貸の通知条件: 家賃＋管理費が上限以下・3部屋以上 (未確認は通す)・NGワード無し・対象の県。
+
+    売買の値段の下限/上限・再販AIの判定 (出口/見送り/スコア) は買う家向けなので使わない。
+    """
+    from . import layout as _layout
+    from . import rental as _rental
+    price = row["price"]
+    if price is not None and price > _rental.RENT_MAX:
+        return False, f"rent {price} > {_rental.RENT_MAX}"
+    try:
+        rooms = row["layout_rooms"]
+    except (KeyError, IndexError, ValueError):
+        rooms = None
+    if not _layout.enough(rooms):
+        return False, f"layout: {rooms}部屋 < {_layout.MIN_ROOMS}"
+    body = (row["title"] or "") + " " + (row["body"] or "")
+    for kw in cfg.ng_keywords:
+        if kw in body:
+            return False, f"ng keyword: {kw}"
+    if row["prefecture"] not in cfg.prefectures:
+        return False, f"prefecture {row['prefecture']} not in allowlist"
+    return True, "ok (rent)"
 
 
 def _check_drive_time(

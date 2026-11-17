@@ -83,6 +83,13 @@ def should_skip(listing: db.Listing, *, price_cutoff: int = PRICE_CUTOFF_YEN) ->
     """
     if listing.property_type == "land":
         return "土地"
+    if listing.deal_type == "rent":
+        from . import layout, rental
+        if listing.price is not None and listing.price > rental.RENT_MAX:
+            return "家賃が上限超え"
+        got = layout.parse(f"{listing.title or ''} {listing.body or ''}")
+        if got and not layout.enough(got[1]):
+            return "2部屋以下"
     if (listing.price is not None and listing.price >= price_cutoff
             and not negotiation.normal_ok(listing.price, listing.prefecture)
             and not negotiation.keep_pricey(listing.price, listing.city, listing.address)):

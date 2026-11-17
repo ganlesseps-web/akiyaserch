@@ -158,6 +158,7 @@ class Listing:
     resale_warnings: str | None = None  # ⚠️警告タグを "|" 区切りで保持 (和式トイレ|汲み取り 等)
     settlement_offer: int = 0  # 1 = 定住条件付き譲渡 / 試住制度 / 改修費返済不要 等を検出
     settlement_offer_reason: str | None = None  # ヒットしたキーワード/フレーズ
+    deal_type: str | None = None  # 'rent' = 賃貸 (price は月々の家賃＋管理費)、None = 売買
 
 
 def now_iso() -> str:
@@ -331,6 +332,8 @@ MIGRATIONS = [
     "ALTER TABLE properties ADD COLUMN layout TEXT",
     "ALTER TABLE properties ADD COLUMN layout_rooms INTEGER",
     "ALTER TABLE properties ADD COLUMN layout_checked_at TEXT",
+    # 賃貸 (2026-11-17 ユーザー「賃貸も探して欲しい」): 'rent' / NULL(売買)
+    "ALTER TABLE properties ADD COLUMN deal_type TEXT",
 ]
 
 
@@ -353,6 +356,8 @@ def _run_migrations(conn: Any) -> None:
 def upsert_listing(conn: Any, listing: Listing) -> tuple[int, bool]:
     """物件を保存し、題名・本文に間取りが書いてあれば一緒に保存する。"""
     pid, is_new = _upsert_listing(conn, listing)
+    if listing.deal_type:
+        conn.execute("UPDATE properties SET deal_type = ? WHERE id = ?", (listing.deal_type, pid))
     from . import layout
     layout.fill_from_text(conn, pid, listing.title, listing.body)
     return pid, is_new

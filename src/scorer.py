@@ -125,6 +125,7 @@ def score_unscored(
         SELECT p.* FROM properties p
         LEFT JOIN ai_scores s ON s.property_id = p.id
         WHERE p.status = 'active'
+          AND (p.deal_type IS NULL OR p.deal_type != 'rent')  -- 賃貸は買う家向けの採点をしない
           AND (s.preferences_hash IS NULL OR s.preferences_hash != ?)
         ORDER BY p.first_seen_at DESC
         LIMIT ?

@@ -244,6 +244,7 @@ def assess_unassessed(
         SELECT p.* FROM properties p
         LEFT JOIN resale_ai a ON a.property_id = p.id
         WHERE p.status = 'active'
+          AND (p.deal_type IS NULL OR p.deal_type != 'rent')  -- 賃貸は再販・民泊の判定をしない
           AND (p.resale_ng IS NULL OR p.resale_ng = 0)
           AND (a.prompt_hash IS NULL OR a.prompt_hash != ?)
         ORDER BY p.first_seen_at DESC
